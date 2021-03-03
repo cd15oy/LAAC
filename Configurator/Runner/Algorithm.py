@@ -27,3 +27,19 @@ This class represents the target algorithm.
 #ends up making multiple calls to target runner with Popen, passing arguments and state to continue the run where it left off 
 #TODO: needs a landscapeCharacterizer in order to obtain the features which the sampler needs 
 #will return a config sequence, along with features for each config, qualities, all the information we need about the sequence 
+
+#note, termination condition needs to come from above, 
+#its possible that we will produce cases which stagnate for a while, then see improvement 
+#the specific conditions which indicate time to terminate will need to be adapted based on observation, and specific to different problems 
+#the initial condition will probabably a total FE limit 
+def run(wrapperCall, staticArgs, initialConfig, characterizer, sampler, terminationCondition):
+    #TODO: this method will also require some sort of configurable termination criteria 
+
+
+    #general idea 
+    #loop until termination condition 
+    ## do the run with current params 
+    ## characterize the new batch 
+    ## predict new params 
+    # return all the data 
+    pass
