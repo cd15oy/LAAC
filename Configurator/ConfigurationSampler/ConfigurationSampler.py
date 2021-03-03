@@ -1,3 +1,4 @@
+"""
 Landscape Aware Algorithm Configurator
 Copyright (C) 2021 Cody Dennis
 
@@ -13,7 +14,11 @@ GNU General Public License for more details.
 
 You should have received a copy of the GNU Lesser General Public License
 along with this program.  If not, see <https://www.gnu.org/licenses/>.
+"""
 
-# LAAC
-Landscape Aware Algorithm Configurator
+"""
+This class is responsible for producing new configurations to be run with the algorithm. Similarly, it is responsible for using a model to choose the next configuration to be used with an algorithm.
+"""
 
+class ConfigurationSampler:
+    pass 

@@ -1,3 +1,4 @@
+"""
 Landscape Aware Algorithm Configurator
 Copyright (C) 2021 Cody Dennis
 
@@ -13,7 +14,16 @@ GNU General Public License for more details.
 
 You should have received a copy of the GNU Lesser General Public License
 along with this program.  If not, see <https://www.gnu.org/licenses/>.
+"""
 
-# LAAC
-Landscape Aware Algorithm Configurator
+"""
+This class represents the target algorithm. 
+"""
 
+
+#TODO: this will also need to make a call to Popen to execute target-runner with the passed parameters 
+#This allows for flexibility, target-runner can be any sort of script you choose 
+#TODO: gets a configuration sampler, which is used to choose the "next" params to use 
+#ends up making multiple calls to target runner with Popen, passing arguments and state to continue the run where it left off 
+#TODO: needs a landscapeCharacterizer in order to obtain the features which the sampler needs 
+#will return a config sequence, along with features for each config, qualities, all the information we need about the sequence 
