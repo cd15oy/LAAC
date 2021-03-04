@@ -23,6 +23,7 @@ This file implements a simple random search algorithm to be used for demonstrati
 from random import random,seed,gauss,randint
 import argparse
 from time import time 
+import json 
 
 RANGE = 10
 
@@ -152,4 +153,4 @@ if __name__ == "__main__":
     result["algorithmState"] = "-pSeed {0} -restore {1}".format(args.pSeed, state)
     result["time"] = totalTime
 
-    print(result)
+    print(json.dumps(result))
