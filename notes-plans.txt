@@ -1,0 +1,368 @@
+This document is for the initial planning of our Landscape Aware Algorithm Configurator. The goal is to produce a general tool which can be applied to arbitrary real valued algorithms and problems, provided minimal requirements are met. The system will consist of the following components:
+
+Written Description:
+    User Code:
+
+    Problem Definitions:
+        Each problem for which we would like a specialized configuration requires a definition 
+            In practice this will consist of an argument to pass to the user code which causes the desired problem to be optimized 
+        
+        Each separate problem also requires one or more instance definitions 
+            Again, in practice this will consist of arguments to pass along with the problem to specify different instances of that problem 
+            There should exist some method to indicate when randomly generated seeds are required as a part of instance data 
+                ex: instance data for problem "-problem F1" could consist of "-seed <random>"
+            This is probably the simplest approach, and it would result in each use of F1 having a separate random instance 
+                but it's not the only option
+            ex suppose you restrict things to maybe 100 randomly generated instances, an reuse those as needed 
+                could reduce variance in observations
+            
+        To start, we will randomly generate a new seed each time a problem is used 
+            This makes no assumptions about the number of instances required to represent the problem
+            ie it's the least biased, and our best option for avoiding overfitting 
+            with the cost of potentially higher variance 
+
+    Configuration Definition:
+
+    Configurator: 
+        Our existing system follows this apprach:
+            "Generate" configuration/training data 
+            train a network 
+            predict configurations 
+
+        This has the advantage of being simple, but provides minimal feedback throughout the process and is not very adaptable 
+
+        This process can generalize as follows: 
+            
+            Generate and evaluate a random sampling of configurations
+            for i in iterations:
+                Collect local landscape characteristics 
+                Update the network 
+                Generate and evaluate more configurations 
+                Update the training data 
+                
+        This requires several different components to be implemented, and presents quite a few different variables which should be experimented with 
+
+
+Component Description:
+    User Code:
+
+        SCRIPT TargetAlgorithm:
+            we require:
+                -> the alg to optimize for must be able to accept an initial state, and be able to continue from that state
+                    ex 10 runs of 100 iterations each, where each run begins from the final state of the previous should be equivalent to one run of 1000 iterations 
+
+            must accept command line parameters defining:
+                -> the problem to optimize
+                -> instance specific information for the problem 
+                -> starting state for the optimization algorithm 
+                -> algorithm specific parameters 
+                -> number of steps/solutions to produce 
+                -> thread ID: a unique identifier of the thread currently calling alg (can be used to ensure simultaneous runs by different threads output to unique locations) 
+            must produce a JSON and write it to STDOUT the JSON must contain 
+                -> the ending state of the algorithm (algState)
+                -> produced solutions (solutions)
+                -> FEs consumed 
+                -> run time 
+                ie 
+                {"solutions":[  {"quality":<float>,"solution":[<float>,<float>,....,<float>]},
+                                {"quality":<float>,"solution":[<float>,<float>,....,<float>]},...,
+                                {"quality":<float>,"solution":[<float>,<float>,....,<float>]}],
+                "evaluationsConsumed":<int>,
+                "algorithmState":String,
+                "time":<int>}
+
+                where the list of solutions contains the solutions produced at each iteration of the underlying optimizer 
+                these solutions and their quality will be used in FLA 
+
+                algorithm state will be passed exactly as is back to the target algorithm script, in order to continue the run later with new parameters 
+                
+
+        CLASS Algorithm:
+            provides an interface to the user provided code to the system 
+
+            METHOD run(ConfigurationSampler):
+                runs the underlying algorithm, passing the provided String as command line args 
+                    also passing any needed static parameters 
+                returns the paths to the algStates and solutions
+
+    Problem Definitions:
+        JSON ProblemConf:
+            The user must provide a JSON with the information necessary to initialize each problem, and populate the problem suite 
+
+        CLASS ProblemSuite:
+            defines a collection of problems which we will tune for 
+
+            METHOD listProblems:
+                lists available problems 
+
+            METHOD getProblem:
+                gets the object corresponding to the specified problem 
+
+            METHOD addProblem:
+                adds a problem object to the suite 
+
+        CLASS Problem:
+            defines an individual problem 
+            recall that an "instance" in this case is essentially just command line arguments to provide to the underlying algo (ex -problem <problem> -problemSeed <pSeed> 
+
+            METHOD listInstances:
+                lists known instances 
+
+            METHOD addInstace:
+                adds a new instance 
+
+            METHOD getArgs:
+                should produce a string which can be passes as arguments to Algorithm
+
+    Configuration Definition:
+        JSON ConfigurationConf: 
+            defines each parameter to tune
+            includes list of parameters tune
+                definitions include:
+                    range (or enumeration of options)
+                    default 
+                    real, integer, categorical 
+            includes list of constraints  
+                defined by numeric expressions and boolean operators 
+
+        CLASS ConfigurationDefinition:
+            inits from the JSON 
+
+            METHOD listParams:
+                lists the params to tune 
+
+            METHOD getParam:
+                retrieves a specfic hyper parameter 
+                    which can be querried for bounds, defaults, acceptable values, etc  
+
+            METHOD putParam:
+                creates a param object from the JSON def of the param 
+
+            METHOD testConstrains:
+                accepts a value for each specific parameter to tune 
+                tests the provided values against the contained constraints 
+
+    Configurator:
+
+        JSON Scenario:
+            Required Parameters:
+                FE limit per run 
+                total runs limit 
+                configs per iteration?
+                runs per iteration? 
+                runs per config limit 
+                wrapper script
+                static parameters 
+                termination criteria 
+                    maxFEs per run  
+                    stagnation params?
+
+
+        High Level Main Loop:
+            Generate and evaluate a random sampling of configurations (config sequences) for each function 
+                It's important to generate a group of configs for each function to ensure we test all regions of the parameter space for each separate function 
+                To start for each function, for each "step" of the optimizer, sample uniformly from the feasible space 
+
+            for i in iterations:
+                Collect local landscape characteristics 
+                Update the training data 
+                Update the network 
+                Generate and evaluate more configurations for each function 
+                    It's still important to target the generation of configs to individual functions since for each separate function we want to focus on optimal configs 
+                        not configs which are generally OK 
+
+        CLASS Configuration:
+            Encapsulates a configuration/sequence of configurations run on a specific problem. Contains/provides any information the system needs about that sequence of configurations, including the local landscape characteristics for each separate group of solutions in the sequence. 
+
+            CONSTRUCTOR Configuration:
+                accepts parameters, a list of solution sequences, and a landscape characterizer 
+
+
+        CLASS ConfigurationDB:
+            responsible for storing all of the tested configurations/configuration sequences 
+
+            METHOD add(Configuration):
+                if the Configuration currently exists, then updated the existing configuration with the new run information 
+                otherwise 
+                create a record for the new configuration 
+
+            METHOD getFlagged():
+                returns a list of configurations flagged for more runs 
+                
+
+        CLASS ConfigurationSampler: 
+            responsible for generating configurations to evaluate, and/or update training data with 
+            generated configurations should fall withing the specifed ranges, and meet the indicated constraints 
+
+            REQUIRES access to the model(s) which generate configs 
+
+            REQUIRES thread safety. Algorithm will use ConfigurationSampler during a run to adapt the configuration, and we may perform multiple runs with algorithm simutaneously. Most likely, all runs will share the same ConfigurationSampler 
+                basically ConfigurationSampler should be stateless so multiple threads can make calls to it safely 
+                the model has a lock to ensure only 1 thing touches it at a time 
+
+            METHOD generate(features): 
+                generate a configuration based on features 
+                features is a structure describing the current state which should be accounted for when generating configurations 
+                features consists of:
+                    -> the calculated landscape features 
+                    -> the configuration which produced the sample 
+                    -> An indicator of how far into the run we are (ex totalFEs consumed so far / FE limit per run) 
+
+        CLASS Model
+            METHOD acquire()
+            METHOD release() 
+                    the model needs mutual exclusion 
+                    it must be acquire before it can be used and released when done 
+
+            METHOD updateModel(data, params):
+                trains the model according to the params on the provided data
+
+            SUBCLASS UniformSampler:
+                generates configurations uniformly at random, independent of the history/features 
+
+            SUBCLASS OnlineSampler:
+                the trained NN 
+
+                 
+
+        CLASS LandscapeCharacterizer:
+            Responsible for reading the solutions file and producing a vector of features characterizing the local landscape 
+
+            METHOD characterize(solutions):
+                characterize the landscape of the solutions  
+                returns features 
+
+        CLASS DataUpdator:
+            determines the quality of tested configs (sequences of configs) based on the available runs and updates the training data 
+            flags configs (sequences) for further evaluation 
+
+            METHOD getTrain(ConfigurationDB): 
+                returns a table of training examples for the NN 
+
+        CLASS Runner:
+            REQUIRES 
+                threadsToUse 
+                runsPerConfig
+
+            Responsible for collecting runs of the algorithm 
+            Should be capable of parallelizing execution by doing multiple runs in parallel 
+
+            METHOD rerun(configSequence, n ):
+                reruns the sequences with n new seeds 
+                returns features and algStates produced during the new runs
+
+            METHOD run(ConfigurationSampler, n):
+                runs a new config sequence generated with ConfigurationSampler n times  
+                returns features and algStats 
+
+            METHOD schedule(n, ConfigurationSampler, [Configuration]):
+                runs n new config sequences and re-runs and passed Configurations in parallel making full use of the alloted threads 
+                returns solutions and algStates for each run 
+                NOTE we might not use actual threads here, since python threading vs process use is a pain in the ass 
+                    POpen doesn't actually cause blocking, so we ?should? be able to use that 
+
+        
+
+
+Parameters/Variables to consider and test 
+    The treatment of problems and problem instances during data collection 
+        ie infinite instances through seeds vs testing over finite instances to reduce variance 
+
+    Config/config sequence evaluation 
+        ie fixed # of runs with average/median vs racing vs something new? 
+
+    Random sampling vs random sampling from the stable region
+
+    balance between predicted configs and randomly sampled configs in tested configurations 
+        two possible extremes, exclusively evaluate randomly sampled configs, exclusively evaluate predicted configs 
+        both would suck 
+            so the questions is what proportion of each should be evaluated 
+            and should those proportions change over time? 
+        some options 
+            static split 
+            shift from only random to only predicted uniformly through run 
+                or from only random to ex 5% random by end
+
+    balance between predicted configs and randomly sampled configs in the training data 
+        do we need to pay attention of whether or not a config was predicted or randomly sampled when producing training data 
+        should we force the addition of randoms to encourage diversity? 
+
+    How should config generation/evaluation, network training, dataset updating, etc change as the run goes on 
+
+    NN architecture
+    NN training parameters 
+
+    Effects of/Relationship between 
+        runs/configs per iteration vs total iterations performed 
+
+    "seed" a run with initial configs from previous good sequences vs "seed" the run with random configs vs "seed" the run with configs believed to be generally good 
+
+    how to handle "bad" configurations 
+        ie what to do when the model produces configurations which fail a constraint 
+
+    how to "end" a run 
+        continue until max FEs met?
+        end when stagnation detected?
+            how to define stagnation 
+        train the model to prefer "low" limits when minimal/no improvement is expected
+            then end the run when the models predictions are "low" or the max is met?
+
+    how to define "local" features 
+        only the solutions produced by a particular configuration?
+        the n most recent solutions?
+
+    Currently Runner is responsible for generating a group of configs and running/evaluating each, using the model to update algorithm params throughout the run 
+        where we expect the model to take landscape features from the previous step, and predict parameters for the next step 
+        this leaves no obvious way to get the initial parameters other than random sampling 
+            perhaps with a small number of initial FEs to collect just enough data for the model to predict on 
+        Unfortunately we can expect that the initial config will be highly influential on final performance 
+            PSO particles often are very chaotic in early iterations
+        So random initial configs may not be ideal 
+    Proposed experiment 
+        train a secondary model to predict configurations which "should have" come before the currently observed features 
+            ie use good runs to train the model on backward predictions 
+    Then test 
+        if repeating a run with the backwards predicted initial config improves final performance 
+        NEED TO KNOW if the performance improvement is also present on initially good runs, or only bad runs 
+            if also present on initially good runs, could apply this in later stages to improve upon existing good config sequences 
+            or might simply generate random configs, run for 1 step, then backwards predict to obtain better starting points 
+
+
+PseudoCode:
+    REQUIRE
+        configsPerIteration 
+        maxFEPerRun
+        totalFELimit
+        maxRunsPerConfig 
+        minRunsPerConfig
+
+    INITIALIZE 
+        Model 
+        ConfigurationSampler
+        LandscapeCharacterizer
+        ConfigurationDB
+        Runner
+        DataUpdater
+
+    #produce initial config sequences 
+    results = Runner.schedule(configsPerIteration, ConfigurationSampler, []) 
+
+    while totalFELimit not exceeded:
+        for run in results:
+            ConfigurationDB.add(new Configuration(run)) #run contains the information needed to initialize a config, we just use what we need 
+
+            trainingData = DataUpdater.getTrain(ConfigurationDB) #while selecting training data it should flag any configs needing more runs 
+
+            Model.acquire()
+            Model.updateModel(trainingData, trainingParams) 
+            Model.release() 
+
+            toReRun = ConfigurationDB.getFlagged() 
+            results = Runner.schedule(configsPerIteration, ConfigurationSampler, toReRun)
+
+
+        
+
+
+
+
