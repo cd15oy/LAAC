@@ -47,6 +47,7 @@ _stdout,_stderr = io.communicate()
 #then reformat the target algorithms output to the JSON required by LAAC 
 
 #randomsearch already produces the JSON we need, so we just print it
+print("RESULTS FOLLOW") #LAAC will interpret everything after the line RESULTS FOLLOW as the algorithm output 
 print(_stdout.decode()) 
 
 #If you're having issues the first place to check would be the output on stderr
