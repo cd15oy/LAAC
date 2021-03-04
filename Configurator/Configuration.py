@@ -22,6 +22,8 @@ This class represents a Configuration. That is, a set of hyper parameters used w
 
 class Configuration:
     def __init__(self):
+        #TODO the actual parameters 
+        
         self.features = None 
         self.rawResult = None 
         self.seed = None #Note this is the algorithm seed, it is specific to this execution of the algorihtm. This is not the instance seed (if it exists)
