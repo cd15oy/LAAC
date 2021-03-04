@@ -20,20 +20,30 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 A class representing a general problem
 """
 class Problem:
-    def __init__(self, name, flag):
+    def __init__(self, name, flag, instances):
+        self.instanceTemplates = instances
         self.name = name 
         self.flag = flag 
 
+    #produces the flags needed by the aglorithm to use the problem 
     def toFlags(self):
         return self.flag
 
+    #get n instances chosen uniformly at random from existing instances (with replacement) 
+    def sampleInstances(self, n):
+        pass 
+    
+    #generate a concrete instance from the template 
+    #if the instance is a static set of flags, it is returned as is, otherwise any keywords are replaced as needed. ex $RANDOM is replaced with a seed 
+    def _parseTemplate(self, template):
+        pass 
 """
 Represents a specific instance of a problem 
 """
 class Instance:
     def __init__(self, problem, instanceData):
         self.problem = problem 
-        self.instanceData = instanceData 
+        self.flags = instanceData 
 
     def toFlags(self):
-        return "{0} {1}".format(self.problem.toFlags(), self.instanceData)
+        return "{0} {1}".format(self.problem.toFlags(), self.flags)
