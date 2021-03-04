@@ -21,6 +21,8 @@ This class is responsible for producing new configurations to be run with the al
 """
 
 class ConfigurationSampler:
+
+    #should parse the config definition file, provide any tools required by the models for generation, and provide methods for validating configs produced by the model 
     
     #Returns a new Configuration based on the provided features 
     #Uses the underlying model, must aquire the model before generating
