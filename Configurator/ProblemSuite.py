@@ -20,6 +20,11 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 A class tracking the problems which LAAC is attempting to tune for 
 """
 class ProblemSuite:
+
+    #problemDef is a dict generated from the problem definition JSON 
+    def __init__(self, problemDef):
+        pass 
+    
     #TODO: need to parse the problem and problem instance defs, and populate self 
     #After parsing should know how to produce instances of the specified problems 
     ## that might mean choosing from some list of pre-defined instances or generating new instances 
