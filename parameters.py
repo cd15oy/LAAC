@@ -60,5 +60,9 @@ scenario =  {
 
 #TODO: configuration validator 
 
-with open("optFiles/problems.json", 'w') as outF:
-    outF.write(json.dumps(problems,indent=2))
+def write():
+    with open("optFiles/problems.json", 'w') as outF:
+        outF.write(json.dumps(problems,indent=2))
+
+if __name__ == "__main__":
+    write()
