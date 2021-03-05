@@ -16,7 +16,7 @@ You should have received a copy of the GNU Lesser General Public License
 along with this program.  If not, see <https://www.gnu.org/licenses/>.
 """
 
-"""
+""" 
 This class represents the target algorithm. 
 """
 
@@ -24,7 +24,7 @@ from Configurator.Configuration import Configuration
 from Configurator.Run import Run 
 from subprocess import Popen, PIPE
 import json
-from random import seed, randint as setSeed, randint
+from random import Random
 class Algorithm:
 
     def __init__(self, wrapperCall, staticArgs):
@@ -36,10 +36,10 @@ class Algorithm:
     #note, termination condition needs to come from above, 
     #its possible that we will produce cases which stagnate for a while, then see improvement 
     #the specific conditions which indicate time to terminate will need to be adapted based on observation, and specific to different problems 
-    #the initial condition will probabably a total FE limit 
+    #the initial condition will probably a total FE limit 
     def run(self, instance, initialConfig, characterizer, sampler, terminationCondition, threadID, runSeed):
         
-        setSeed(runSeed)
+        rng = Random(runSeed)
 
         #A Run is simply a list of configurations 
         #Each individual configuration will contain the hyper parameters, and data collected about the algorithm
@@ -50,7 +50,7 @@ class Algorithm:
         conf = initialConfig
        
         while not terminationCondition.terminate(theRun):
-            seed = randint(0,4000000000) #A seed for the first execution of the target algorihtm
+            seed = rng.randint(0,4000000000) #A seed for the execution of the target algorithm
 
             #construct our command 
             toRun = " ".join([self.wrapperCall, str(threadID), str(seed), self.staticArgs, instance.toFlags(), conf.toFlags(), restore])
@@ -76,7 +76,7 @@ class Algorithm:
             conf.threadID = threadID 
 
             #Store the finished configuration in the run 
-            theRun.configurations.append(initialConfig)
+            theRun.configurations.append(conf)
 
             #Generate the next configuration
             conf = sampler.generate(features)
