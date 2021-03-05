@@ -19,11 +19,16 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 """
 A class representing a general problem
 """
+
+from random import Random 
+
 class Problem:
-    def __init__(self, name, flag, instances):
+    def __init__(self, name, flag, instances, seed):
+        self.rng = Random(seed)
         self.instanceTemplates = instances
         self.name = name 
         self.flag = flag 
+        self.instances = set()
 
     #produces the flags needed by the aglorithm to use the problem 
     def toFlags(self):
@@ -31,12 +36,25 @@ class Problem:
 
     #get n instances chosen uniformly at random from existing instances (with replacement) 
     def sampleInstances(self, n):
-        pass 
+        #TODO: choices(list(set)) is inefficent, consider doing something less stupid
+        return self.rng.choices(list(self.instances), k=n)
     
     #generate a concrete instance from the template 
-    #if the instance is a static set of flags, it is returned as is, otherwise any keywords are replaced as needed. ex $RANDOM is replaced with a seed 
+    #if the instance is a static set of flags, it is returned as is, otherwise any keywords are replaced as needed. ex $RANDOM is replaced with a random seed 
     def _parseTemplate(self, template):
-        pass 
+        #nothing fancy, just a replace for each possible keyword 
+        ret = template.replace("$RANDOM", str(self.rng.randint(0,4000000000)))
+        return ret  
+
+    #Generate a new instances from a random template
+    #The new instance is added to the set of instances 
+    def generateInstance(self):
+        rndTemplate = self.rng.choice(self.instanceTemplates)
+        instanceString = self._parseTemplate(rndTemplate) 
+        instance = Instance(self, instanceString) 
+        self.instances.add(instance) 
+        return instance 
+
 """
 Represents a specific instance of a problem 
 """
@@ -47,3 +65,12 @@ class Instance:
 
     def toFlags(self):
         return "{0} {1}".format(self.problem.toFlags(), self.flags)
+
+    def __hash__(self):
+        return self.toFlags().__hash__()
+
+    def __eq__(self, other):
+        return self.__hash__() == other.__hash__()
+
+    def __ne__(self, other):
+        return self.__eq__(other) == False 
