@@ -23,7 +23,7 @@ from Configurator.Problem import Problem, Instance
 """
 Sanity checks for ProblemSuite, Problem and Instance.
 """
-#TODO: can we really have too few tests?
+#TODO: can we really have too many tests?
 
 class TestProblemSuite(unittest.TestCase):
 
