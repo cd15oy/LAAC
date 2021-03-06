@@ -135,8 +135,8 @@ Component Description:
                 retrieves a specfic hyper parameter 
                     which can be querried for bounds, defaults, acceptable values, etc  
 
-            METHOD putParam:
-                creates a param object from the JSON def of the param 
+            METHOD createConfiguration:
+                creates a configuration object containing the provided hyperparameter values 
 
             METHOD testConstrains:
                 accepts a value for each specific parameter to tune 
