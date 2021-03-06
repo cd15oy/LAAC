@@ -67,6 +67,7 @@ if __name__ == "__main__":
     parser.add_argument("-p", action="store", nargs='?', default="f1", type=str, help="The problem to optimize", dest="problem", choices=["f1","f2"])
     parser.add_argument("-shift", action="store", nargs='?', default=True, type=bool, help="Shift the function?", dest="shift", choices=["True","False"])
     parser.add_argument("-rotate", action="store", nargs='?', default=True, type=bool, help="Rotate the function?", dest="rotate", choices=["True","False"])
+    parser.add_argument("-g", action="store", nargs='?', default=True, type=bool, help="Only update the current solution if the new one is better?", dest="greedy", choices=["True","False"])
 
     args = parser.parse_args() 
 
@@ -132,25 +133,42 @@ if __name__ == "__main__":
             sol = [solution[x] + gauss(STEPS[x][0], STEPS[x][1]) for x in range(args.dimensionality)] 
             nextSols.append(sol) 
 
+        bestStep = None
+        bestStepFit = float('inf')
         #update our solution with the best found result 
         for sol in nextSols:
             f = prob(sol, SHIFT, ROTATE) 
             evals += 1 
-            if f < fitness:
-                fitness = f 
-                solution = sol 
+            if f < bestStepFit:
+                bestStepFit = f 
+                bestStep = sol 
+
+        if args.greedy:
+            if bestStepFit < fitness:
+                fitness = bestStepFit 
+                solution = bestStep 
+        else:
+            fitness = bestStepFit 
+            solution = bestStep 
 
         solutions.append({"quality":fitness,"solution":solution})
 
     totalTime = time() - startTime 
 
     result = dict() 
+    #solutions is just a list of dicts defining each produced solution and it's quality
     result["solutions"] = solutions
+    #the total number of function evaluations consumed in this execution 
     result["evaluationsConsumed"] = evals 
+
+    #algorithm state should be a string that can be passed as flags to the algorithm to "pick up" where this run left off 
+    #problem/instance information does not need to be included LAAC will provide that on its own 
     state = "" 
     for v in solution:
         state += str(v) + " "
-    result["algorithmState"] = "-pSeed {0} -restore {1}".format(args.pSeed, state)
+    result["algorithmState"] = "-restore {1}".format(state)
+
+    #time used by the run
     result["time"] = totalTime
 
     print(json.dumps(result))
