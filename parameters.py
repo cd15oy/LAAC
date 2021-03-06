@@ -122,7 +122,7 @@ parameters =    {   #Each parameter to tune needs a definition in the paremters 
                         {                   
                             "name":"std3",
                             "type":"real",
-                            "flag":"-s1",
+                            "flag":"-s3",
                             "default":1,
                             "lower":0.01,
                             "upper":2
