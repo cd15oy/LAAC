@@ -20,14 +20,20 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 This class represents the target algorithm. 
 """
 
-from Configurator.Configuration import Configuration 
+from Configurator.Configuration import Configuration  
 from Configurator.Run import Run 
+from Configurator.Problem import Instance
+from Configurator.TerminationCondition import TerminationCondition
+from Configurator.Characterizer import Characterizer
+from Configurator.Sampler import Sampler
 from subprocess import Popen, PIPE
 import json
 from random import Random
+
+
 class Algorithm:
 
-    def __init__(self, wrapperCall, staticArgs):
+    def __init__(self, wrapperCall: str, staticArgs: str) -> None:
         self.wrapperCall = wrapperCall 
         self.staticArgs = staticArgs
         
@@ -37,7 +43,7 @@ class Algorithm:
     #its possible that we will produce cases which stagnate for a while, then see improvement 
     #the specific conditions which indicate time to terminate will need to be adapted based on observation, and specific to different problems 
     #the initial condition will probably a total FE limit 
-    def run(self, instance, initialConfig, characterizer, sampler, terminationCondition, threadID, runSeed):
+    def run(self, instance: Instance, initialConfig: Configuration, characterizer: Characterizer, sampler: Sampler, terminationCondition: TerminationCondition, threadID: int, runSeed: int) -> Run:
         
         rng = Random(runSeed)
 
@@ -61,25 +67,29 @@ class Algorithm:
             _stdout,_stderr = io.communicate() 
             output = _stdout.decode()
 
+            #print(_stderr.decode()) #If you run into issues check out stderr, dont forget to print stderr in the target-algorithm too!
+
             #We expect everything after RESULTS FOLLOW to be the output for LAAC
             #The output should be properly formatted JSON 
             #TODO: More informative Errors/Exceptions
+            print(output)
             loc = output.find("RESULTS FOLLOW")
             result = json.loads(output[loc + 14:])
-            #print(_stderr.decode()) #If you run into issues check out stderr 
+            
 
-            #Finish populating the Configuration with data
-            features = characterizer.characterize(result)
-            conf.features = features
+            #TODO: uncomment and fill in
+            # #Finish populating the Configuration with data
+            # features = characterizer.characterize(result)
+            # conf.features = features
             conf.rawResult = result
-            conf.seed = seed 
-            conf.threadID = threadID 
+            # conf.seed = seed 
+            # conf.threadID = threadID 
 
-            #Store the finished configuration in the run 
+            # #Store the finished configuration in the run 
             theRun.configurations.append(conf)
 
-            #Generate the next configuration
-            conf = sampler.generate(features)
+            # #Generate the next configuration
+            # conf = sampler.generate(features)
 
             #ensure we pick up where the algorithm left off
             restore = result["algorithmState"]
