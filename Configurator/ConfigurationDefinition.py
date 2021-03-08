@@ -19,9 +19,13 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 """
 Parses and represents the user provided definition of valid configurations. 
 """
+from typing import List
+from Configurator.Configuration import Configuration
+
+
 class ConfigurationDefinition:
     #defintions should be a dictionary generated from the user provided json 
-    def __init__(self, definitions):
+    def __init__(self, definitions: dict):
 
         #A list of parameter definitions 
         self.parameters = []
@@ -41,7 +45,7 @@ class ConfigurationDefinition:
         for constraint in definitions["constraints"]:
             self.constraints.append(Constraint(constraint))
 
-    def validate(self, configuration):
+    def validate(self, configuration: Configuration) -> bool:
         for constraint in self.constraints:
             if not constraint.test(configuration):
                 return False 
@@ -55,12 +59,12 @@ Defines a constrain from an arithmetic expression
 """
 class Constraint:
     
-    def __init__(self, expression):
+    def __init__(self, expression: str):
         self.expression = expression 
         self.operators = {ast.Add: op.add, ast.Sub: op.sub, ast.Mult: op.mul,
              ast.Div: op.truediv, ast.Lt: op.lt, ast.Gt:op.gt, ast.LtE:op.le, ast.GtE:op.ge, ast.Eq:op.eq, ast.NotEq:op.ne, ast.And:op.and_, ast.Or:op.or_}
 
-    def test(self, config):
+    def test(self, config: Configuration) -> bool:
         expr = self.expression 
         for k in config.values:
             expr = expr.replace("${0}".format(k), str(config.values[k].value)) 
@@ -72,7 +76,9 @@ class Constraint:
 
         return result 
 
-
+    #return type, and type of node is dynamic
+    #usually accepts an ast.AST and returns another but somtimes returns a literal 
+    #ex when the node represents some constant, it returns the constant, which could be one of many types 
     def __eval(self,node):
         if isinstance(node, ast.Constant):
             return node.n
@@ -89,7 +95,7 @@ class Constraint:
 
 #Defines a general parameter 
 class ParameterDefinition:
-    def __init__(self,name, type, flag):
+    def __init__(self,name: str, type: str, flag:str):
         self.name = name 
         self.type = type 
         self.flag = flag 
@@ -97,21 +103,21 @@ class ParameterDefinition:
         self.__validateIdentifiers()
         
     #Validates the parameter definition
-    def __validateIdentifiers(self):
+    def __validateIdentifiers(self) -> None:
         #Not really much we can do yet, but can't hurt to make sure we get strings
         if type(self.name) != str or type(self.flag) != str or type(self.type) != str:
             raise ValueError("ValueError: name, type, and flag should be strings")
 
 #for defining real valued parameters
 class Real(ParameterDefinition):
-    def __init__(self,name, type, flag, default, lower, upper):
+    def __init__(self,name:str, type:str, flag:str, default:float, lower:float, upper:float):
         super(Real, self).__init__(name, type, flag) 
         self.default = default 
         self.lower = lower 
         self.upper = upper 
         self.__validateDomain()
 
-    def __validateDomain(self):
+    def __validateDomain(self) -> None:
         try:
             self.default = float(self.default)
         except:
@@ -133,20 +139,20 @@ class Real(ParameterDefinition):
         if not (self.default <= self.upper and self.default >= self.lower):
             raise ValueError("ValueError: default should be between lower and upper")
 
-    def validate(self, value):
+    def validate(self, value:float) -> bool:
         return type(value) == float and value >= self.lower and value <= self.upper
 
 
 #for defining integer valued parameters
 class Integer(ParameterDefinition):
-    def __init__(self,name, type, flag, default, lower, upper):
+    def __init__(self,name:str, type:str, flag:str, default:int, lower:int, upper:int):
         super(Integer, self).__init__(name, type, flag) 
         self.default = default 
         self.lower = lower 
         self.upper = upper 
         self.__validateDomain()
 
-    def __validateDomain(self):
+    def __validateDomain(self) -> None:
         if not type(self.default) == int:
             raise ValueError("ValueError: For Integers default should be an int. Parameter: {0} Value: {1}".format(self.name, self.default))
 
@@ -162,18 +168,18 @@ class Integer(ParameterDefinition):
         if not (self.default <= self.upper and self.default >= self.lower):
             raise ValueError("ValueError: default should be between lower and upper")
 
-    def validate(self, value):
+    def validate(self, value:int) -> bool:
         return type(value) == int and value >= self.lower and value <= self.upper
 
 #for defining categorical parameters
 class Categorical(ParameterDefinition):
-    def __init__(self,name, type, flag, default, options):
+    def __init__(self,name:str, type:str, flag:str, default:str, options:List[str]):
         super(Categorical, self).__init__(name, type, flag) 
         self.options = options
         self.default = default
         self.__validateDomain()
 
-    def __validateDomain(self):
+    def __validateDomain(self)->None:
         for opt in self.options:
             if type(opt) != str:
                 raise ValueError("ValueError: Categorical options must be strings")
@@ -181,17 +187,18 @@ class Categorical(ParameterDefinition):
         if self.default not in self.options:
             raise ValueError("ValueError: A categorical default must be from the provided options")  
 
-    def validate(self, value):
+    def validate(self, value:str)->bool:
         return type(value) == str and value in self.options
 
 #a specific value of a parameter
 class ConcreteParameter:
-    def __init__(self, type, value):
+    #Values type depends on the type of parameter, float for Real, int for Integer, etc
+    def __init__(self, type:ParameterDefinition, value):
         self.type = type 
         self.value = value 
         if not self.type.validate(value):
             raise ValueError("Invalid value ({0}) for parameter {1}".format(value, type.name))
             
 
-    def toFlags(self):
+    def toFlags(self)->str:
         return "{0} {1}".format(self.type.flag, self.value)
