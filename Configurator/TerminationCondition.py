@@ -20,20 +20,22 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 This file defines conditions for terminating a run. A termination condition is a class with a .terminate([Configuration]) method. This allows a termination condition to have an internal state. It may be favorable to adjust the conditions for termination based on our observations while attempting to configure the algorithm. For this to be possible a termination condition will require state. 
 """
 
+from Configurator.Run import Run
+
 #Not really needed with python, but I think including it makes things clearer 
 class TerminationCondition:
-    def terminate(self, runs):
+    def terminate(self, runs: Run) -> bool:
         pass 
 
 #Terminate the run once a set number of FEs are consumed
 class FELimit(TerminationCondition):
-    def __init__(self, limit):
+    def __init__(self, limit: int) -> None:
         self.limit = limit 
 
     def terminate(self, run):
         
         total = 0 
-        for conf in run:
+        for conf in run.configurations:
             total += conf.rawResult["evaluationsConsumed"]
 
         if total >= self.limit:
