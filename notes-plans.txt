@@ -351,14 +351,14 @@ PseudoCode:
         for run in results:
             ConfigurationDB.add(new Configuration(run)) #run contains the information needed to initialize a config, we just use what we need 
 
-            trainingData = DataUpdater.getTrain(ConfigurationDB) #while selecting training data it should flag any configs needing more runs 
+        trainingData = DataUpdater.getTrain(ConfigurationDB) #while selecting training data it should flag any configs needing more runs 
 
-            Model.acquire()
-            Model.updateModel(trainingData, trainingParams) 
-            Model.release() 
+        Model.acquire()
+        Model.updateModel(trainingData) 
+        Model.release() 
 
-            toReRun = ConfigurationDB.getFlagged() 
-            results = Runner.schedule(configsPerIteration, ConfigurationSampler, toReRun)
+        toReRun = ConfigurationDB.getFlagged() 
+        results = Runner.schedule(configsPerIteration, ConfigurationSampler, toReRun)
 
 
         
