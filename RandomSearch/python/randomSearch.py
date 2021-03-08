@@ -65,9 +65,9 @@ if __name__ == "__main__":
     parser.add_argument("-aSeed", action="store", nargs='?', default=randint(0,4000000000) , type=int, help="The seed for random number generation during the search", dest="aSeed") #This should be random so separate runs still have different trajectories by default 
     parser.add_argument("-restore", action="store", nargs='+', default=None , help="Continue the search from the provided solution.", dest="restore")
     parser.add_argument("-p", action="store", nargs='?', default="f1", type=str, help="The problem to optimize", dest="problem", choices=["f1","f2"])
-    parser.add_argument("-shift", action="store", nargs='?', default=True, type=bool, help="Shift the function?", dest="shift", choices=["True","False"])
-    parser.add_argument("-rotate", action="store", nargs='?', default=True, type=bool, help="Rotate the function?", dest="rotate", choices=["True","False"])
-    parser.add_argument("-g", action="store", nargs='?', default=True, type=bool, help="Only update the current solution if the new one is better?", dest="greedy", choices=["True","False"])
+    parser.add_argument("-shift", action="store", nargs='?', default=True, type=bool, help="Shift the function?", dest="shift", choices=[True,False])
+    parser.add_argument("-rotate", action="store", nargs='?', default=True, type=bool, help="Rotate the function?", dest="rotate", choices=[True,False])
+    parser.add_argument("-g", action="store", nargs='?', default=True, type=bool, help="Only update the current solution if the new one is better?", dest="greedy", choices=[True, False])
 
     args = parser.parse_args() 
 
@@ -166,7 +166,7 @@ if __name__ == "__main__":
     state = "" 
     for v in solution:
         state += str(v) + " "
-    result["algorithmState"] = "-restore {1}".format(state)
+    result["algorithmState"] = "-restore {0}".format(state)
 
     #time used by the run
     result["time"] = totalTime
