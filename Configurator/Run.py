@@ -20,9 +20,21 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 Wraps the information defining a run 
 """
 
+from Configurator.Problem import Instance
+import time 
+
 class Run:
     
-    def __init__(self, instance):
+    def __init__(self, instance: Instance) -> None:
         #The problem instance on which this run was performed 
         self.instance = instance
+
+        #The configurations used in the run
         self.configurations = [] 
+
+        self.performedAt = int(time.time()*1000000)
+
+    #produces a unqiue identifier corresponding to the sequence of parameter values used in this run 
+    def runConfigID(self) -> int:
+        configs = [x.toFlags() for x in self.configurations]
+        return "".join(configs).__hash__()
