@@ -16,7 +16,7 @@ You should have received a copy of the GNU Lesser General Public License
 along with this program.  If not, see <https://www.gnu.org/licenses/>.
 """
  
-from Configurator.ConfigurationDefinition import ConcreteParameter
+from Configurator.ConfigurationDefinition import ConcreteParameter, ConfigurationDefinition
 """
 Indicates a required parameter value is missing
 """
@@ -30,7 +30,7 @@ This class represents a concrete Configuration. That is, a set of hyper paramete
 class Configuration:
     #configDef should be a ConfigurationDefinition object, initialized from the user provided JSON
     #values should be a dictionary define the value for each parameter. The keys should be the parameter names .
-    def __init__(self, configDef, values):
+    def __init__(self, configDef: ConfigurationDefinition, values: dict):
         
         #the configuration definition acts like a specification, it is used to validate instances of Configuration 
         self.configurationDefinition = configDef
@@ -59,7 +59,7 @@ class Configuration:
         self.threadID = None
 
     #Produces a string of command line arguments which can be passed on to Algorithm
-    def toFlags(self):
+    def toFlags(self) -> str:
         components = [self.values[x].toFlags() for x in self.values]
         components.sort() #make the order of flags consistent 
 
