@@ -16,8 +16,9 @@ You should have received a copy of the GNU Lesser General Public License
 along with this program.  If not, see <https://www.gnu.org/licenses/>.
 """
 
-from random import Random 
-from Configurator.Problem import Problem 
+from random import Random
+from typing import List 
+from Configurator.Problem import Instance, Problem 
 
 """
 A class tracking the problems which LAAC is attempting to tune for 
@@ -25,7 +26,7 @@ A class tracking the problems which LAAC is attempting to tune for
 class ProblemSuite:
 
     #problemDef is a dict generated from the problem definition JSON 
-    def __init__(self, problemDef, seed):
+    def __init__(self, problemDef:dict, seed:int):
 
         self.rng = Random(seed) 
 
@@ -38,13 +39,13 @@ class ProblemSuite:
             self.problems.append(p) 
     
     #Generates n new instances from randomly selected problems 
-    def generateN(self, n):
+    def generateN(self, n:int) -> List[Instance]:
         sampleProblems = self.rng.choices(self.problems, k=n) 
         instances = [x.generateInstance() for x in sampleProblems] 
         return instances 
 
     #Samples n random instances from randomly selected problems 
-    def sampleN(self, n):
+    def sampleN(self, n:int) -> List[Instance]:
         sampleProblems = self.rng.choices(self.problems, k=n) 
         instances = [x.sampleInstances(1) for x in sampleProblems] 
         return instances 
