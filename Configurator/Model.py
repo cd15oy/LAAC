@@ -16,9 +16,14 @@ You should have received a copy of the GNU Lesser General Public License
 along with this program.  If not, see <https://www.gnu.org/licenses/>.
 """
 
+from typing import List
+from Configurator.ConfigurationDefinition import ConfigurationDefinition
 from Configurator.ConfigurationDB import ConfigurationDB
 import threading
 from numpy import ndarray
+from random import Random
+
+#TODO: all testing
 
 """ 
 This class defines a method for selecting the "next" configuration to be used with the algorithm
@@ -39,14 +44,80 @@ class Model:
 
     #Model implementations must implement this method to be used by LAAC
     def _generate(self, features:ndarray) -> dict:
-        pass
+        raise NotImplementedError
     
     #LAAC will provide the configurationDb to the model
     #the ConfigurationDB will contain information about the tested configurations, the runs performed with them, and which configurations respresent desirable output 
     #update is responsible for selecting useful information from the DB, and updating the model to produce better predictions
     def update(self, configs:ConfigurationDB) -> None:
-        pass
+        raise NotImplementedError
 
-#TODO: random sampler as a testing/proof of concept for fleshing out 
+#purely random configuration sampling
+#TODO: tests
+class LatinHyperCube(Model):
+    def __init__(self, bufferSize:int, configDef:ConfigurationDefinition, seed:int):
+        super(LatinHyperCube, self).__init__() 
+        self.configs = [] 
+        self.configDef = configDef 
+        self.bufferSize = bufferSize
+        self.rng = Random(seed) 
+
+    #this is a purely random sampler, no updating is possible
+    def update(self, configs:ConfigurationDB) -> None:
+        pass 
+
+
+    #Simple latin hyper-cube sampling
+    def _generate(self, features:ndarray) -> dict:
+
+        #If needed generate a new random sample 
+        if len(self.configs) == 0:
+            #generate a sample of bufferSize for each param
+            paramSamples = []
+
+            for param in self.configDef.parameters:
+                if param.type == "real":
+                    vals = self.__generateReals(self.bufferSize, param.lower, param.upper)
+                elif param.type == "integer":
+                    vals = self.__generateInts(self.bufferSize, param.lower, param.upper)
+                elif param.type == "categorical":
+                    vals = self.__generateCategorical(self.bufferSize, param.options)
+
+                paramSamples.append([(param.name,x) for x in vals]) 
+
+            #param samples is a list of lists of random samples for each parameter
+            #each sublist was shuffled by the generate functions 
+
+            #now we just zip them up to create new random configs
+            tmpConfs = zip(*paramSamples) 
+            for tmpConf in tmpConfs:
+                conf = dict() 
+                for param in tmpConf:
+                    conf[param[0]] = param[1] 
+                self.configs.append(conf) 
+            
+        return self.configs.pop()
+
+    def __generateReals(self, n:int, lower:float, upper:float) -> List[float]:
+        binWidth = (upper - lower)/n
+        vals = [] 
+
+        l = lower 
+        for i in range(n):
+            vals.append((self.rng.random()*binWidth) + l) 
+            l += binWidth 
+
+        self.rng.shuffle(vals) 
+        return vals
+
+    def __generateInts(self, n:int, lower:int, upper:int) -> List[int]:
+        return [int(x) for x in self.__generateReals(n, lower, upper)]
+
+    def __generateCategorical(self, n:int, choices:List[str]):
+        vals = [choices[x%len(choices)] for x in range(n)]
+        self.rng.shuffle(vals)
+
+        return vals 
+
 
 #TODO: NN backed model 
