@@ -20,7 +20,6 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 Parses and represents the user provided definition of valid configurations. 
 """
 from typing import List
-from Configurator.Configuration import Configuration
 
 
 class ConfigurationDefinition:
@@ -45,7 +44,7 @@ class ConfigurationDefinition:
         for constraint in definitions["constraints"]:
             self.constraints.append(Constraint(constraint))
 
-    def validate(self, configuration: Configuration) -> bool:
+    def validate(self, configuration:"Configuration") -> bool:
         for constraint in self.constraints:
             if not constraint.test(configuration):
                 return False 
@@ -62,9 +61,11 @@ class Constraint:
     def __init__(self, expression: str):
         self.expression = expression 
         self.operators = {ast.Add: op.add, ast.Sub: op.sub, ast.Mult: op.mul,
-             ast.Div: op.truediv, ast.Lt: op.lt, ast.Gt:op.gt, ast.LtE:op.le, ast.GtE:op.ge, ast.Eq:op.eq, ast.NotEq:op.ne, ast.And:op.and_, ast.Or:op.or_}
+            ast.Div: op.truediv, ast.Lt: op.lt, ast.Gt:op.gt, ast.LtE:op.le, 
+            ast.GtE:op.ge, ast.Eq:op.eq, ast.NotEq:op.ne, ast.And:op.and_, ast.Or:op.or_,
+            ast.USub:op.neg}
 
-    def test(self, config: Configuration) -> bool:
+    def test(self, config:"Configuration") -> bool:
         expr = self.expression 
         for k in config.values:
             expr = expr.replace("${0}".format(k), str(config.values[k].value)) 
@@ -202,3 +203,52 @@ class ConcreteParameter:
 
     def toFlags(self)->str:
         return "{0} {1}".format(self.type.flag, self.value)
+
+
+"""
+Indicates a required parameter value is missing
+"""
+class MissingParameterError(Exception):
+    pass
+
+"""
+This class represents a concrete Configuration. That is, a set of hyper parameters used with the optimizer and all data collected about the optimizer and the use of those parameters. 
+"""
+
+class Configuration:
+    #configDef should be a ConfigurationDefinition object, initialized from the user provided JSON
+    #values should be a dictionary define the value for each parameter. The keys should be the parameter names .
+    def __init__(self, configDef: ConfigurationDefinition, values: dict):
+        
+        #the configuration definition acts like a specification, it is used to validate instances of Configuration 
+        self.configurationDefinition = configDef
+        
+        #stores the concrete parameter, keyed by their names
+        self.values = dict() 
+
+        #First we need to construct a concrete parameter for each value 
+        for param in self.configurationDefinition.parameters:
+            if param.name not in values:
+                raise MissingParameterError("A configuration is missing the parameter {0}".format(param.name))
+
+            self.values[param.name] = ConcreteParameter(param, values[param.name])
+
+        #now that all of the Concrete parameters are constructed, we need to validate this configuration 
+        self.valid = True
+
+        for constraint in self.configurationDefinition.constraints:
+            if not constraint.test(self):
+                self.valid=False 
+                
+        #This will be filled in later once the configuration is actually run 
+        self.features = None 
+        self.rawResult = None 
+        self.seed = None #Note this is the algorithm seed, it is specific to this execution of the algorithm. This is not the instance seed (if it exists)
+        self.threadID = None
+
+    #Produces a string of command line arguments which can be passed on to Algorithm
+    def toFlags(self) -> str:
+        components = [self.values[x].toFlags() for x in self.values]
+        components.sort() #make the order of flags consistent 
+
+        return " ".join(components).strip() 
