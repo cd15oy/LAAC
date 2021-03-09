@@ -25,7 +25,7 @@ from Configurator.Run import Run
 #Not really needed with python, but I think including it makes things clearer 
 class TerminationCondition:
     def terminate(self, runs: Run) -> bool:
-        pass 
+        raise NotImplementedError
 
 #Terminate the run once a set number of FEs are consumed
 class FELimit(TerminationCondition):
