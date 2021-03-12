@@ -108,6 +108,7 @@ if __name__ == "__main__":
     seed(args.aSeed)
 
     solutions = [] 
+    state = [] 
     evals = 0 
 
     startTime = time() 
@@ -133,6 +134,8 @@ if __name__ == "__main__":
             sol = [solution[x] + gauss(STEPS[x][0], STEPS[x][1]) for x in range(args.dimensionality)] 
             nextSols.append(sol) 
 
+        curState = [] 
+
         bestStep = None
         bestStepFit = float('inf')
         #update our solution with the best found result 
@@ -142,6 +145,11 @@ if __name__ == "__main__":
             if f < bestStepFit:
                 bestStepFit = f 
                 bestStep = sol 
+
+            #update the state list 
+            curState.append({"quality":f,"solution":sol})
+
+        state.append(curState)
 
         if args.greedy:
             if bestStepFit < fitness:
@@ -161,12 +169,15 @@ if __name__ == "__main__":
     #the total number of function evaluations consumed in this execution 
     result["evaluationsConsumed"] = evals 
 
+    #a list of lists of dictionaries defining the potential solutions considered at each iteration along with their qualities 
+    result["state"] = state
+
     #algorithm state should be a string that can be passed as flags to the algorithm to "pick up" where this run left off 
     #problem/instance information does not need to be included LAAC will provide that on its own 
-    state = "" 
+    restore = "" 
     for v in solution:
-        state += str(v) + " "
-    result["algorithmState"] = "-restore {0}".format(state)
+        restore += str(v) + " "
+    result["algorithmState"] = "-restore {0}".format(restore)
 
     #time used by the run
     result["time"] = totalTime

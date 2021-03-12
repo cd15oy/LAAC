@@ -107,7 +107,6 @@ class Algorithm:
                 loc = output.find("RESULTS FOLLOW")
                 result = json.loads(output[loc + 14:])
                 
-
                 #TODO: uncomment and fill in
                 # #Finish populating the Configuration with data
                 features = np.array([])#features = characterizer.characterize(result)
