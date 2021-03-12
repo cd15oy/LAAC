@@ -17,8 +17,7 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 """
 
 import unittest
-from Configurator.ConfigurationDefinition import ConfigurationDefinition, Constraint, Real, Integer, Categorical, ConcreteParameter
-from Configurator.Configuration import Configuration,MissingParameterError 
+from Configurator.ConfigurationDefinition import ConfigurationDefinition, Constraint, Real, Integer, Categorical, ConcreteParameter, Configuration, MissingParameterError
 
 """
 Sanity checks for ConfigurationDefinition, Configuration, and the supporting classes 
