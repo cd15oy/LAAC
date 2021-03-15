@@ -17,7 +17,6 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 """
 
 from Configurator.ConfigurationDB import ConfigurationDB
-from typing import List
 from Configurator.ConfigurationDefinition import ConfigurationDefinition,Configuration
 from Configurator.Model import LatinHyperCube
 from numpy import ndarray
