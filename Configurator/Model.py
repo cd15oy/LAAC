@@ -16,7 +16,6 @@ You should have received a copy of the GNU Lesser General Public License
 along with this program.  If not, see <https://www.gnu.org/licenses/>.
 """
 
-from typing import List
 from Configurator.ConfigurationDefinition import ConfigurationDefinition
 from Configurator.ConfigurationDB import ConfigurationDB
 import threading
@@ -98,7 +97,7 @@ class LatinHyperCube(Model):
             
         return self.configs.pop()
 
-    def __generateReals(self, n:int, lower:float, upper:float) -> List[float]:
+    def __generateReals(self, n:int, lower:float, upper:float) -> list[float]:
         binWidth = (upper - lower)/n
         vals = [] 
 
@@ -110,10 +109,10 @@ class LatinHyperCube(Model):
         self.rng.shuffle(vals) 
         return vals
 
-    def __generateInts(self, n:int, lower:int, upper:int) -> List[int]:
+    def __generateInts(self, n:int, lower:int, upper:int) -> list[int]:
         return [int(x) for x in self.__generateReals(n, lower, upper)]
 
-    def __generateCategorical(self, n:int, choices:List[str]):
+    def __generateCategorical(self, n:int, choices:list[str]):
         vals = [choices[x%len(choices)] for x in range(n)]
         self.rng.shuffle(vals)
 
