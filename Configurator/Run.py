@@ -34,7 +34,11 @@ class Run:
 
         self.performedAt = int(time.time()*1000000)
 
-    #produces a unqiue identifier corresponding to the sequence of parameter values used in this run 
+    #produces a unique identifier corresponding to the problem 
+    def problem(self) -> int:
+        return self.instance.problem.toFlags().__hash__()
+
+    #produces a unique identifier corresponding to the sequence of parameter values used in this run 
     def runConfigID(self) -> int:
         configs = [x.toFlags() for x in self.configurations]
         return "".join(configs).__hash__()
