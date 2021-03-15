@@ -19,8 +19,6 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 """
 Parses and represents the user provided definition of valid configurations. 
 """
-from typing import List
-
 
 class ConfigurationDefinition:
     #defintions should be a dictionary generated from the user provided json 
@@ -174,7 +172,7 @@ class Integer(ParameterDefinition):
 
 #for defining categorical parameters
 class Categorical(ParameterDefinition):
-    def __init__(self,name:str, type:str, flag:str, default:str, options:List[str]):
+    def __init__(self,name:str, type:str, flag:str, default:str, options:list[str]):
         super(Categorical, self).__init__(name, type, flag) 
         self.options = options
         self.default = default
@@ -252,3 +250,9 @@ class Configuration:
         components.sort() #make the order of flags consistent 
 
         return " ".join(components).strip() 
+
+    #Creates a duplicate of this configuration 
+    #copy/deepcopy aren't really appropriate here since some objects are shared across instances of the same configuration, and others are unique to the instance
+    def duplicate(self) -> "Configuration":
+        #TODO
+        pass 
