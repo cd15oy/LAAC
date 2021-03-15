@@ -20,7 +20,6 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 Stores the collection of configurations that have been tested. Organized by run, which allows us to know the sequence in which configs were used.
 """
 import time
-from typing import List
 from Configurator.Run import Run
 
 #TODO: finish fleshing out, need to store all configs and runs, flag un flag runs
@@ -32,12 +31,17 @@ class ConfigurationDB:
         self.records = dict() 
 
     def addRun(self, run: Run) -> None:
+        prob = run.problem()
         id = run.runConfigID()
-        if id not in self.records:
+        if prob not in self.records:
+            self.records[prob] = dict() 
+
+        rcrdsForProblem = self.records[prob]
+        if id not in rcrdsForProblem:
             rcrd = Record() 
-            self.records[id] = rcrd 
+            rcrdsForProblem[id] = rcrd 
         
-        self.records[id].addRun(run) 
+        rcrdsForProblem[id].addRun(run) 
 
     #each run should be identified by a unique id, which increases sequentially as runs are added 
     #that way it possible to find any new data by only grabbing runs with id greater than x
@@ -60,7 +64,7 @@ class Record:
         self._runs.append(run)
         self._updatedAt = int(time.time()*1000000)
 
-    def getRuns(self) -> List[Run]:
+    def getRuns(self) -> list[Run]:
         return self._runs
 
     def reRun(self, val:bool) -> None:
