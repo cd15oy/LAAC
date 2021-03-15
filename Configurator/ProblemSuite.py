@@ -17,7 +17,6 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 """
 
 from random import Random
-from typing import List 
 from Configurator.Problem import Instance, Problem 
 
 """
@@ -38,14 +37,20 @@ class ProblemSuite:
             p = Problem(prob["name"], prob["flag"], prob["instances"], self.rng.randint(0,4000000000))
             self.problems.append(p) 
     
-    #Generates n new instances from randomly selected problems 
-    def generateN(self, n:int) -> List[Instance]:
-        sampleProblems = self.rng.choices(self.problems, k=n) 
+    #Generates n new problem instances. If problem is None, problems are selected randomly for each instance, otherwise instances are generated for the specified problem 
+    def generateN(self, n:int, problem:Problem=None) -> list[Instance]:
+        if problem is None:
+            sampleProblems = self.rng.choices(self.problems, k=n) 
+        else:
+            sampleProblems = [problem for x in range(n)]
         instances = [x.generateInstance() for x in sampleProblems] 
         return instances 
 
-    #Samples n random instances from randomly selected problems 
-    def sampleN(self, n:int) -> List[Instance]:
-        sampleProblems = self.rng.choices(self.problems, k=n) 
-        instances = [x.sampleInstances(1) for x in sampleProblems] 
-        return instances 
+    #Samples n existing problem instances. If problem is None, problems are selected randomly for each instance, otherwise instances are sampled for the specified problem 
+    def sampleN(self, n:int, problem:Problem=None) -> list[Instance]:
+        if problem is None:
+            sampleProblems = self.rng.choices(self.problems, k=n) 
+            instances = [x.sampleInstances(1)[0] for x in sampleProblems] 
+            return instances 
+        else:
+            return problem.sampleInstance(n)
