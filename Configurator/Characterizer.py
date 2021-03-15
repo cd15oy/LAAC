@@ -25,7 +25,7 @@ import numpy as np
 from random import Random
 from Configurator.RoC import fit 
 import sys 
-
+#TODO: tests 
 #A generic error 
 class CharacterizerError(Exception):
     pass
