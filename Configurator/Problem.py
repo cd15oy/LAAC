@@ -21,13 +21,12 @@ A class representing a general problem
 """
 
 from random import Random 
-from typing import List
 
 """
 Represents a specific instance of a problem 
 """
 class Problem:
-    def __init__(self, name:str, flag:str, instances:List[str], seed:int):
+    def __init__(self, name:str, flag:str, instances:list[str], seed:int):
         self.rng = Random(seed)
         self.instanceTemplates = instances
         self.name = name 
@@ -39,7 +38,7 @@ class Problem:
         return self.flag
 
     #get n instances chosen uniformly at random from existing instances (with replacement) 
-    def sampleInstances(self, n:int)->List["Instance"]:
+    def sampleInstances(self, n:int)->list["Instance"]:
         #TODO: choices(list(set)) is inefficent, consider doing something less stupid
         return self.rng.choices(list(self.instances), k=n)
     
