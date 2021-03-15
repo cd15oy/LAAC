@@ -327,6 +327,9 @@ Parameters/Variables to consider and test
             if also present on initially good runs, could apply this in later stages to improve upon existing good config sequences 
             or might simply generate random configs, run for 1 step, then backwards predict to obtain better starting points 
 
+    Effect of different sols/particles as the search/walk vector 
+        ex using gBest of each iteration vs best current position of each iteration vs a single randomly chosen particle vs the current positions of the particle which produced gBest at the end
+
 
 PseudoCode:
     REQUIRE
@@ -342,7 +345,7 @@ PseudoCode:
         LandscapeCharacterizer
         ConfigurationDB
         Runner
-        DataUpdater
+        DataUpdater 
 
     #produce initial config sequences 
     results = Runner.schedule(configsPerIteration, ConfigurationSampler, []) 
