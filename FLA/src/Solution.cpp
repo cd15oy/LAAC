@@ -33,8 +33,6 @@ class Solution {
 
         //Cloning constructor
         Solution(Solution & s) {
-
-            std::cout << "in cloning 1.0 \n";
             length = s.length; 
             x = new double[length];
             for(int i = 0; i < length; i++)
@@ -42,10 +40,8 @@ class Solution {
             fit = s.fit; 
             evaled = s.evaled;
 
-            std::cout << "in cloning 1.1 \n";
             stateLen = s.stateLen;
             state = new Solution*[stateLen];
-            std::cout << "in cloning 1.2 \n";
             for(int i = 0; i < stateLen; i++) {
                 state[i] = new Solution(*s.state[i]);
             }

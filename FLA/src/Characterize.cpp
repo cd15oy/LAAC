@@ -6,6 +6,22 @@
 
 //TODO: The whole FLA code base needs to be cleaned up and adapted for this project
 
+//A struct for containing results 
+struct Characteristics {
+    double FDC; 
+    double yDist[2]; 
+    double pairwise[54];
+    double FEM;
+    double grad[2];
+    double M[2];
+    double stag[2];
+    double * diversity; 
+    double * gBestStep; 
+    double * gBestStag;
+    double * gBestyDist;
+};
+
+
 /*
     Characterizes the provided solutions. 
     solutions is a 2d array containing the solution from each iteration of the search 
@@ -27,19 +43,15 @@
     characteristics will be initialized with a double array containing the computed characteristcs 
     the returned int will give the length of characteristics 
 */
-int characterize_cpp(double ** solutions, double * quality, double *** state, double ** stateQuality, int numSolutions, int * stateSize, int dims, double * characteristics, long seed) {
-    std::cout << "1" << "\n";
+void characterize_cpp(double ** solutions, double * quality, double *** state, double ** stateQuality, int numSolutions, int * stateSize, int dims, Characteristics & characteristics, long seed) {
+
     //obtain a sample 
     Sample * S = new Sample();
 
     for(int i = 0; i < numSolutions; i++) {
-        std::cout << "1.0" << "\n";
-        std::cout << "1.01" << solutions[i][0] << "\n";
-        std::cout << "1.02" << "\n";
         Solution * n = new Solution(solutions[i], dims);
-        std::cout << "1.05" << "\n";
         n->setFit(quality[i]);
-        std::cout << "1.1" << "\n";
+
         //So, some explanation for this mess 
         //Solutions contain a top level vector and quality, as well as a state 
         //The state inside a solution is simply a list of Solutions, which of course can contain lists of solutions themselves 
@@ -48,96 +60,141 @@ int characterize_cpp(double ** solutions, double * quality, double *** state, do
 
         Solution * clone = new Solution(*n);
         delete[] n -> state ;
-        std::cout << "1.101" << "\n";
         n -> stateLen = 1 ;
         n -> state = new Solution*[n->stateLen]; 
-        std::cout << "1.102" << "\n";
         n -> state[0] = clone; 
-
-        std::cout << "1.11" << "\n";
 
         delete[] n -> state[0] -> state ;
         n -> state[0] -> stateLen = stateSize[i];
         n -> state[0] -> state = new Solution*[n -> state[0] -> stateLen]; 
 
-        std::cout << "1.2" << "\n";
         for(int j = 0; j < n -> state[0] -> stateLen; j++) {
             n -> state[0] -> state[j] = new Solution(state[i][j], dims);
             n -> state[0] -> state[j] -> setFit(stateQuality[i][j]);
         }
         
-        std::cout << "1.3" << "\n";
         S -> add(n);
         
     }
 
-    std::cout << "2" << "\n";
-
     //Initialize the landscape measures to use 
-    int numFLMs = 11;
-    FLM * measures[numFLMs]; //The measures to use 
     int frequency = 1;
     RndGen rnd = RndGen(seed);
 
     //Landscape characteristics to evaluate 
-    measures[0] = new FDC();
-    measures[1] = new yDist();
-    measures[2] = new Pairwise(&rnd);
-    measures[3] = new FEM();
-    measures[4] = new Grad();
-    measures[5] = new M();
-    measures[6] = new Stag();
-    measures[7] = new Diversity(numSolutions,frequency);
-    measures[8] = new GBestStep(numSolutions,frequency);
+    FDC fdc;
+    yDist  ydist;
+    Pairwise pairwise(&rnd);
+    FEM fem;
+    Grad grad;
+    M m;
+    Stag stag;
+    Diversity diversity(numSolutions,frequency);
+    GBestStep gbeststep(numSolutions,frequency);
     //measures[measureCounter] = new SwarmStep(sampleSize, numPart,frequencyForNonCheckpointableFLMS);
-    measures[9] = new GBestStag(dims);
+    GBestStag gbeststag(dims);
     //measures[measureCounter] = new SwarmStag(dimensionality, numPart);
-    measures[10] = new GBestyDist(dims);
+    GBestyDist gbestydist(dims);
     //measures[measureCounter] = new SwarmyDist(dimensionality, numPart);
-            
+    
 
-    std::cout << "3" << "\n";
+    double * ret; 
+    ret = fdc.calculate(*S);
+    characteristics.FDC = ret[0]; 
+    //std::cout << characteristics.FDC << "\n";
+    delete[] ret;
+
+    ret = ydist.calculate(*S);
+    for(int i = 0; i < 2; i++) {
+        characteristics.yDist[i] = ret[i];
+        //std::cout << ret[i] << " "; 
+    }
+    //std::cout << "\n";
+    delete[] ret;
+    
+    ret = pairwise.calculate(*S);
+    for(int i = 0; i < 54; i++) {
+        characteristics.pairwise[i] = ret[i];
+        //std::cout << ret[i] << " "; 
+    }
+    //std::cout << "\n";
+    delete[] ret;
+
+    ret = fem.calculate(*S);
+    characteristics.FEM = ret[0];
+    //std::cout << ret[0] << " "; 
+    delete[] ret; 
+
+    ret = grad.calculate(*S);
+    for(int i = 0; i < 2; i++) {
+        characteristics.grad[i] = ret[i];
+        //std::cout << ret[i] << " "; 
+    }
+    //std::cout << "\n";
+    delete[] ret;
+
+    ret = m.calculate(*S);
+    for(int i = 0; i < 2; i++) {
+        characteristics.M[i] = ret[i];
+        //std::cout << ret[i] << " "; 
+    }
+    //std::cout << "\n";
+    delete[] ret;
    
-    double * FLMEs[numFLMs];    //An array of arrays containing FLM estimates
+    ret = stag.calculate(*S);
+    for(int i = 0; i < 2; i++) {
+        characteristics.stag[i] = ret[i];
+        //std::cout << ret[i] << " "; 
+    }
+    //std::cout << "\n";
+    delete[] ret;
 
+    //May throw an error if no state is provided, the python code should do its own checking too
     try {
-        //Estimate the FLMs
-        for(int j = 0; j < numFLMs; j++) {
-            FLMEs[j] = measures[j]->calculate(*S);
+        ret = diversity.calculate(*S);
+        for(int i = 0; i < numSolutions; i++) {
+            characteristics.diversity[i] = ret[i];
+            //std::cout << ret[i] << " ";
         }
+        //std::cout << "\n";
+        delete[] ret; 
     } catch (const char * c) {
-        std::cout << c << "\n";
+        for(int i = 0; i < numSolutions; i++) 
+            characteristics.diversity[i] = 0;
     }
+    
 
-    std::cout << "4" << "\n";
-
-    int characteristicVectorLength = 0; 
-    for(int j = 0; j < numFLMs; j++)
-        characteristicVectorLength += measures[j]-> lenOut();
-
-    //delete[] characteristics;
-    //characteristics = new double[characteristicVectorLength]; 
-
-    int ptr = 0; 
-    std::cout << "------\n";
-    for(int i = 0; i < numFLMs; i++) {
-        for(int j = 0; j < measures[i] -> lenOut(); j++) {
-            characteristics[ptr] = FLMEs[i][j];
-            std::cout << FLMEs[i][j] << " ";
-            ptr++;
-        }
-        std::cout << "\n\n";
+    ret = gbeststep.calculate(*S);
+    for(int i = 0; i < numSolutions; i++){
+        characteristics.gBestStep[i] = ret[i];
+        //std::cout << ret[i] << " ";
     }
+    //std::cout << "\n";
+    delete[] ret; 
 
-    std::cout << "5" << "\n";
+    ret = gbeststag.calculate(*S);
+    for(int i = 0; i < 2*dims; i++) {
+        characteristics.gBestStag[i] = ret[i];
+        //std::cout << ret[i] << " ";
+    }
+    //std::cout << "\n";
+    delete[] ret; 
 
-    //TODO: free memory
+    ret = gbestydist.calculate(*S);
+    for(int i = 0; i < 2*dims; i++) {
+        characteristics.gBestyDist[i] = ret[i];
+        //std::cout << ret[i] << " ";
+    }
+    //std::cout << "\n";
+    delete[] ret;
 
-    return characteristicVectorLength;
+    //std::cout <<"huh?\n";
+    delete S;
 }
 
 
 
 extern "C" {
-    int characterize(double ** solutions, double * quality, double *** state, double ** stateQuality, int numSolutions, int * stateSize, int dims, double characteristics[104], long seed){ return characterize_cpp(solutions, quality, state, stateQuality, numSolutions, stateSize, dims, characteristics, seed); }
+    void characterize(double ** solutions, double * quality, double *** state, double ** stateQuality, int numSolutions, int * stateSize, int dims, Characteristics & characteristics, long seed){ return characterize_cpp(solutions, quality, state, stateQuality, numSolutions, stateSize, dims, characteristics, seed); }
 }
+
