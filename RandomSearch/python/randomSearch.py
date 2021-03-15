@@ -123,8 +123,6 @@ if __name__ == "__main__":
     
     evals += 1 #one evaluation consumed above 
 
-    solutions.append({"quality":fitness,"solution":solution})
-
     #run the search 
     for iter in range(args.iterations):
 
