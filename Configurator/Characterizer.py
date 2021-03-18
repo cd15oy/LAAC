@@ -120,6 +120,9 @@ class Characterizer:
             # print([characteristics.gBestStag[x] for x in range(2*dims)])
             # print([characteristics.gBestyDist[x] for x in range(2*dims)])
             
+            #if you run python3 Configure.py -scenario optFiles/scenario.json -seed 12345 then characteristics.gBestStep contains a non-finite value 
+            #TODO ^^ figure it out
+
             #Construct a feature vector with the results 
             out =   [[characteristics.FDC] + 
                     [x for x in characteristics.yDist] + 
