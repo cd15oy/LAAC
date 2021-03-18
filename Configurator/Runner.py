@@ -27,18 +27,22 @@ from Configurator.ConfigurationGenerator import ConfigurationGenerator
 from random import Random
 from Configurator.Characterizer import Characterizer
 from Configurator.ProblemSuite import ProblemSuite
+from multiprocessing.pool import ThreadPool
+
 """
 Runners are responsible for collecting runs of the target algorithm. This involves performing additional runs of existing configurations, as well as obtaining/running new configurations from the model. Runners are responsible for generatin the specific problem instances a configuration is evaluated on and ensuring the data we collect about a configuration provides a reliable description of the configuration.
 """
 #TODO: evaluate configurations over a limited pool of instances to reduce variance? 
 
 class Runner:
-    def __init__(self, problemSuite:ProblemSuite, characterizer:Characterizer, terminationCondition:TerminationCondition, seed:int, algorithm:Algorithm):
+    def __init__(self, problemSuite:ProblemSuite, characterizer:Characterizer, terminationCondition:TerminationCondition, seed:int, algorithm:Algorithm, threads:int=1):
         self.problems = problemSuite 
         self.characterizer = characterizer 
         self.terminationCondition = terminationCondition
         self.rng = Random(seed) 
         self.algorithm = algorithm
+        self.threads = threads
+        self.workers = ThreadPool(threads)
 
     #configurations should be a list of tuples of (int,Configuration) where the int indicates how many instances should be run for the Configuration
     #runs should be a list of tuples (int,Run) Run is a previously existing Run object. Runner will perform <int> additional runs on new instances of the configuration sequence found in Run 
@@ -47,39 +51,48 @@ class Runner:
         raise NotImplementedError
 
     #Performs numInstances runs each for numNewConfigs new configuration sequences and performance an additional run on a new instance for any runs in configsToReRun 
-    def schedule(self, numNewConfigs:int, numInstances:int, confSampler:ConfigurationGenerator, configsToReRun:list[Run]):
+    def schedule(self, numNewConfigs:int, numInstances:int, confSampler:ConfigurationGenerator, configsToReRun:list[Run] = None) -> list[Run]:
         configs = [(numInstances, confSampler.generate()) for x in range(numNewConfigs)]
-        reRun = [(1,x) for x in configsToReRun] 
+
+        reRun = None
+        if configsToReRun is not None:
+            reRun = [(1,x) for x in configsToReRun] 
 
         todo = self._generateInstances(configs, reRun) 
 
         runs = [] 
         #TODO: replace this with a thread pool
-        for inst,conf in todo:
-            run = self.algorithm.run(inst, conf, self.characterizer, confSampler, self.terminationCondition, 0, self.rng.randint(0,4000000000))
-            runs.append(run) 
 
+        todo = [(inst, conf, self.characterizer, confSampler, self.terminationCondition, self.rng.randint(0,4000000000)) for inst,conf in todo]
+
+        #return self.workers.starmap(self.algorithm.run, todo)
+        for x in todo:
+            runs.append(self.algorithm.run(*x))
         return runs
+        
+    def close(self) -> None:
+        self.workers.close()
 
         
 
 class RandomInstanceRunner(Runner):
+    
     def _generateInstances(self, configurations:list[tuple[int,Configuration]]=None, runs:list[tuple[int,Run]]=None) -> list[tuple[Instance,Configuration]]:
         ret = [] 
-        for x in configurations:
-            for y in range(x[0]):
-                ret.append((self.problems.generateN(1), x[1].duplicate())
+        if configurations is not None:
+            for x in configurations:
+                for y in range(x[0]):
+                    ret.append((self.problems.generateN(1)[0], x[1].duplicateParams()))
 
-        #TODO: add (instance,config) pairs for the reruns
-        #but remember, we just need the inital config from the run, see the comments in algorithm.rerun for why full reruns are silly
+        if runs is not None:
+            for x in runs:
+                for y in range(x[0]):
+                    ret.append((self.problems.generateN(1, x[1].instance.problem)[0], x[1].configurations[0].duplicateParams()))
+
+        return ret 
+       
 
 
 
-
-#TODO: uses Algorithm to perform runs, we want algorithm.run to be called in a separate thread 
-#TODO: needs a ConfigurationSampler, and a LandscapeCharacterizer 
-#both a required by algorithm to actually perform a run 
-
-#runner just needs to collect all the required runs and pass the data up 
 
 
