@@ -45,151 +45,159 @@ struct Characteristics {
 */
 void characterize_cpp(double ** solutions, double * quality, double *** state, double ** stateQuality, int numSolutions, int * stateSize, int dims, Characteristics & characteristics, long seed) {
 
-    //obtain a sample 
-    Sample * S = new Sample();
 
-    for(int i = 0; i < numSolutions; i++) {
-        Solution * n = new Solution(solutions[i], dims);
-        n->setFit(quality[i]);
+    //TODO: Adjust dispersion to not throw errors for small samples
 
-        //So, some explanation for this mess 
-        //Solutions contain a top level vector and quality, as well as a state 
-        //The state inside a solution is simply a list of Solutions, which of course can contain lists of solutions themselves 
-        //The FLA code we're using here is reused from a different project, and expects the vectors from our state parameters to be stored at 
-        // S -> state[0] -> state, so we store them there 
+    try{//TODO: remove this disgusting try/catch
 
-        Solution * clone = new Solution(*n);
-        delete[] n -> state ;
-        n -> stateLen = 1 ;
-        n -> state = new Solution*[n->stateLen]; 
-        n -> state[0] = clone; 
+        //obtain a sample 
+        Sample * S = new Sample();
 
-        delete[] n -> state[0] -> state ;
-        n -> state[0] -> stateLen = stateSize[i];
-        n -> state[0] -> state = new Solution*[n -> state[0] -> stateLen]; 
+        for(int i = 0; i < numSolutions; i++) {
+            Solution * n = new Solution(solutions[i], dims);
+            n->setFit(quality[i]);
 
-        for(int j = 0; j < n -> state[0] -> stateLen; j++) {
-            n -> state[0] -> state[j] = new Solution(state[i][j], dims);
-            n -> state[0] -> state[j] -> setFit(stateQuality[i][j]);
+            //So, some explanation for this mess 
+            //Solutions contain a top level vector and quality, as well as a state 
+            //The state inside a solution is simply a list of Solutions, which of course can contain lists of solutions themselves 
+            //The FLA code we're using here is reused from a different project, and expects the vectors from our state parameters to be stored at 
+            // S -> state[0] -> state, so we store them there 
+
+            Solution * clone = new Solution(*n);
+            delete[] n -> state ;
+            n -> stateLen = 1 ;
+            n -> state = new Solution*[n->stateLen]; 
+            n -> state[0] = clone; 
+
+            delete[] n -> state[0] -> state ;
+            n -> state[0] -> stateLen = stateSize[i];
+            n -> state[0] -> state = new Solution*[n -> state[0] -> stateLen]; 
+
+            for(int j = 0; j < n -> state[0] -> stateLen; j++) {
+                n -> state[0] -> state[j] = new Solution(state[i][j], dims);
+                n -> state[0] -> state[j] -> setFit(stateQuality[i][j]);
+            }
+            
+            S -> add(n);
+            
+        }
+
+        //Initialize the landscape measures to use 
+        int frequency = 1;
+        RndGen rnd = RndGen(seed);
+
+        //Landscape characteristics to evaluate 
+        FDC fdc;
+        yDist  ydist;
+        Pairwise pairwise(&rnd);
+        FEM fem;
+        Grad grad;
+        M m;
+        Stag stag;
+        Diversity diversity(numSolutions,frequency);
+        GBestStep gbeststep(numSolutions,frequency);
+        //measures[measureCounter] = new SwarmStep(sampleSize, numPart,frequencyForNonCheckpointableFLMS);
+        GBestStag gbeststag(dims);
+        //measures[measureCounter] = new SwarmStag(dimensionality, numPart);
+        GBestyDist gbestydist(dims);
+        //measures[measureCounter] = new SwarmyDist(dimensionality, numPart);
+        
+
+        double * ret; 
+        ret = fdc.calculate(*S);
+        characteristics.FDC = ret[0]; 
+        //std::cout << characteristics.FDC << "\n";
+        delete[] ret;
+
+        ret = ydist.calculate(*S);
+        for(int i = 0; i < 2; i++) {
+            characteristics.yDist[i] = ret[i];
+            //std::cout << ret[i] << " "; 
+        }
+        //std::cout << "\n";
+        delete[] ret;
+        
+        ret = pairwise.calculate(*S);
+        for(int i = 0; i < 54; i++) {
+            characteristics.pairwise[i] = ret[i];
+            //std::cout << ret[i] << " "; 
+        }
+        //std::cout << "\n";
+        delete[] ret;
+
+        ret = fem.calculate(*S);
+        characteristics.FEM = ret[0];
+        //std::cout << ret[0] << " "; 
+        delete[] ret; 
+
+        ret = grad.calculate(*S);
+        for(int i = 0; i < 2; i++) {
+            characteristics.grad[i] = ret[i];
+            //std::cout << ret[i] << " "; 
+        }
+        //std::cout << "\n";
+        delete[] ret;
+
+        ret = m.calculate(*S);
+        for(int i = 0; i < 2; i++) {
+            characteristics.M[i] = ret[i];
+            //std::cout << ret[i] << " "; 
+        }
+        //std::cout << "\n";
+        delete[] ret;
+    
+        ret = stag.calculate(*S);
+        for(int i = 0; i < 2; i++) {
+            characteristics.stag[i] = ret[i];
+            //std::cout << ret[i] << " "; 
+        }
+        //std::cout << "\n";
+        delete[] ret;
+
+        //May throw an error if no state is provided, the python code should do its own checking too
+        try {
+            ret = diversity.calculate(*S);
+            for(int i = 0; i < numSolutions; i++) {
+                characteristics.diversity[i] = ret[i];
+                //std::cout << ret[i] << " ";
+            }
+            //std::cout << "\n";
+            delete[] ret; 
+        } catch (const char * c) {
+            for(int i = 0; i < numSolutions; i++) 
+                characteristics.diversity[i] = 0;
         }
         
-        S -> add(n);
-        
-    }
 
-    //Initialize the landscape measures to use 
-    int frequency = 1;
-    RndGen rnd = RndGen(seed);
-
-    //Landscape characteristics to evaluate 
-    FDC fdc;
-    yDist  ydist;
-    Pairwise pairwise(&rnd);
-    FEM fem;
-    Grad grad;
-    M m;
-    Stag stag;
-    Diversity diversity(numSolutions,frequency);
-    GBestStep gbeststep(numSolutions,frequency);
-    //measures[measureCounter] = new SwarmStep(sampleSize, numPart,frequencyForNonCheckpointableFLMS);
-    GBestStag gbeststag(dims);
-    //measures[measureCounter] = new SwarmStag(dimensionality, numPart);
-    GBestyDist gbestydist(dims);
-    //measures[measureCounter] = new SwarmyDist(dimensionality, numPart);
-    
-
-    double * ret; 
-    ret = fdc.calculate(*S);
-    characteristics.FDC = ret[0]; 
-    //std::cout << characteristics.FDC << "\n";
-    delete[] ret;
-
-    ret = ydist.calculate(*S);
-    for(int i = 0; i < 2; i++) {
-        characteristics.yDist[i] = ret[i];
-        //std::cout << ret[i] << " "; 
-    }
-    //std::cout << "\n";
-    delete[] ret;
-    
-    ret = pairwise.calculate(*S);
-    for(int i = 0; i < 54; i++) {
-        characteristics.pairwise[i] = ret[i];
-        //std::cout << ret[i] << " "; 
-    }
-    //std::cout << "\n";
-    delete[] ret;
-
-    ret = fem.calculate(*S);
-    characteristics.FEM = ret[0];
-    //std::cout << ret[0] << " "; 
-    delete[] ret; 
-
-    ret = grad.calculate(*S);
-    for(int i = 0; i < 2; i++) {
-        characteristics.grad[i] = ret[i];
-        //std::cout << ret[i] << " "; 
-    }
-    //std::cout << "\n";
-    delete[] ret;
-
-    ret = m.calculate(*S);
-    for(int i = 0; i < 2; i++) {
-        characteristics.M[i] = ret[i];
-        //std::cout << ret[i] << " "; 
-    }
-    //std::cout << "\n";
-    delete[] ret;
-   
-    ret = stag.calculate(*S);
-    for(int i = 0; i < 2; i++) {
-        characteristics.stag[i] = ret[i];
-        //std::cout << ret[i] << " "; 
-    }
-    //std::cout << "\n";
-    delete[] ret;
-
-    //May throw an error if no state is provided, the python code should do its own checking too
-    try {
-        ret = diversity.calculate(*S);
-        for(int i = 0; i < numSolutions; i++) {
-            characteristics.diversity[i] = ret[i];
+        ret = gbeststep.calculate(*S);
+        for(int i = 0; i < numSolutions; i++){
+            characteristics.gBestStep[i] = ret[i];
             //std::cout << ret[i] << " ";
         }
         //std::cout << "\n";
         delete[] ret; 
+
+        ret = gbeststag.calculate(*S);
+        for(int i = 0; i < 2*dims; i++) {
+            characteristics.gBestStag[i] = ret[i];
+            //std::cout << ret[i] << " ";
+        }
+        //std::cout << "\n";
+        delete[] ret; 
+
+        ret = gbestydist.calculate(*S);
+        for(int i = 0; i < 2*dims; i++) {
+            characteristics.gBestyDist[i] = ret[i];
+            //std::cout << ret[i] << " ";
+        }
+        //std::cout << "\n";
+        delete[] ret;
+
+        //std::cout <<"huh?\n";
+        delete S;
     } catch (const char * c) {
-        for(int i = 0; i < numSolutions; i++) 
-            characteristics.diversity[i] = 0;
+        std::cout << c << "\n";
     }
-    
-
-    ret = gbeststep.calculate(*S);
-    for(int i = 0; i < numSolutions; i++){
-        characteristics.gBestStep[i] = ret[i];
-        //std::cout << ret[i] << " ";
-    }
-    //std::cout << "\n";
-    delete[] ret; 
-
-    ret = gbeststag.calculate(*S);
-    for(int i = 0; i < 2*dims; i++) {
-        characteristics.gBestStag[i] = ret[i];
-        //std::cout << ret[i] << " ";
-    }
-    //std::cout << "\n";
-    delete[] ret; 
-
-    ret = gbestydist.calculate(*S);
-    for(int i = 0; i < 2*dims; i++) {
-        characteristics.gBestyDist[i] = ret[i];
-        //std::cout << ret[i] << " ";
-    }
-    //std::cout << "\n";
-    delete[] ret;
-
-    //std::cout <<"huh?\n";
-    delete S;
 }
 
 
