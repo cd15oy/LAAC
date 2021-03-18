@@ -308,10 +308,12 @@ def piecewise(x, m1, m2, t,c):
 
 #This method takes in values, and fits the piecewise function to them 
 def fit(vals):
-    
-    X = np.array([x for x in range(0,len(vals))],dtype=np.float64)
+
     Y = np.array(vals,dtype=np.float64) 
     Y = Y[np.isfinite(Y)] #Drop any NaNs or INFs from vals
+    
+    X = np.array([x for x in range(0,len(Y))],dtype=np.float64)
+    
 
     c = vals[0] #Bossman statically defined the y-intercept of the first equation to the first datavalue 
     #it makes sense, in this case the first value is always found at x=0 
