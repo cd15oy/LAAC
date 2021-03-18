@@ -225,7 +225,7 @@ class Configuration:
         self.values = dict() 
 
         #First we need to construct a concrete parameter for each value 
-        for param in self.configurationDefinition.parameters:
+        for param in configDef.parameters:
             if param.name not in values:
                 raise MissingParameterError("A configuration is missing the parameter {0}".format(param.name))
 
@@ -234,7 +234,7 @@ class Configuration:
         #now that all of the Concrete parameters are constructed, we need to validate this configuration 
         self.valid = True
 
-        for constraint in self.configurationDefinition.constraints:
+        for constraint in configDef.constraints:
             if not constraint.test(self):
                 self.valid=False 
                 
@@ -251,8 +251,8 @@ class Configuration:
 
         return " ".join(components).strip() 
 
-    #Creates a duplicate of this configuration 
-    #copy/deepcopy aren't really appropriate here since some objects are shared across instances of the same configuration, and others are unique to the instance
-    def duplicate(self) -> "Configuration":
-        #TODO
-        pass 
+    #Creates a duplicate of this parameter configuration with features, rawResult, seed, and threadID equal to None
+    def duplicateParams(self) -> "Configuration":
+        vals = {x:self.values[x].value for x in self.values}
+        ret = Configuration(self.configurationDefinition, vals)
+        return ret 
