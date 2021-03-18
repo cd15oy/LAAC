@@ -26,6 +26,8 @@ from Configurator.Run import Run
 #get passed to updator for updating flags 
 #gets passed to model for data extracton 
 
+#TODO: Once this is somewhat finalized re-write it for efficency
+#need to store the config db on disk probably
 class ConfigurationDB:
     def __init__(self):
         self.records = dict() 
@@ -43,8 +45,17 @@ class ConfigurationDB:
         
         rcrdsForProblem[id].addRun(run) 
 
-    #each run should be identified by a unique id, which increases sequentially as runs are added 
-    #that way it possible to find any new data by only grabbing runs with id greater than x
+        #Set rerun to false, since we're adding a new run 
+        rcrdsForProblem[id].reRun(False)
+
+    #produces a list of configurations which have been flagged for an additional run
+    def getReRuns(self) -> list[Run]:
+        ret = [] 
+        for prob in self.records:
+            for rcrd in self.records[prob]:
+                if self.records[prob][rcrd].reRun():
+                    ret.append(rcrd[0])
+
 
 """
 Wraps the information we have about a particular sequence of configurations 
@@ -56,7 +67,7 @@ class Record:
         self._desirable = False #whether or not this configuration is "good" compared to the others
         self._updatedAt = int(time.time()*1000000)
 
-    #we use getters and setter shere to ensure that updatedAt is accurage 
+    #we use getters and setter shere to ensure that updatedAt is accurate 
     #models will likely be interested in finding records that have been updated since they last view the DB
     #so we need to make it easy to find 'new' records 
 
@@ -67,16 +78,17 @@ class Record:
     def getRuns(self) -> list[Run]:
         return self._runs
 
-    def reRun(self, val:bool) -> None:
-        self._reRun = val 
-        self._updatedAt = int(time.time()*1000000)
+    def reRun(self, val:bool=None) -> None:
+        if val is None:
+            return self._reRun 
+        else:
+            self._reRun = val 
+            self._updatedAt = int(time.time()*1000000)
 
-    def reRun(self) -> bool:
-        return self._reRun 
 
-    def desirable(self, val:bool) -> None:
-        self._desirable = val 
-        self._updatedAt = int(time.time()*1000000)
-
-    def desirable(self) -> bool:
-        return self._desirable 
+    def desirable(self, val:bool=None) -> None:
+        if val is None:
+            return self._desirable 
+        else:
+            self._desirable = val 
+            self._updatedAt = int(time.time()*1000000)
