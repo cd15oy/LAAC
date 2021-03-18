@@ -330,6 +330,26 @@ Parameters/Variables to consider and test
     Effect of different sols/particles as the search/walk vector 
         ex using gBest of each iteration vs best current position of each iteration vs a single randomly chosen particle vs the current positions of the particle which produced gBest at the end
 
+    effects of rerunning configs vs sampling new configs 
+        there is likely a relationship between the size of a sample of configurations and the number of runs per configuration required to detect significant differences in quality 
+            early in the the run of LAAC, it probably isn't worth the effort to re-run configs
+            since its quite possible for a small to medium sample of configs to simply contain many configs with similar quality 
+        in such a case simply sampling more configs may be more effective at producing diferences in quality in the dataset 
+        Alternatively, maybe re-running early will allow us to filter bad configs out of the desirable data more quickly, and lead to improvements in the model 
+
+        the two extremes are 
+            no reruns -> do only the minimum runs for each config, and focus on the ones which appear desirable 
+            rerun desirable configs at the earliest opportunity until the upper runs limit is met 
+
+            one adaptive option 
+                choose the proportion of newconfigs vs reruns based on the iteration of LAAC
+
+    definition of desirable 
+        statically use best x percent 
+        vs 
+        not statistically significantly worse than xth quartile 
+        
+        in either case x could be adjusted dynamically 
 
 PseudoCode:
     REQUIRE
