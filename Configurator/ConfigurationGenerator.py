@@ -18,7 +18,7 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 from Configurator.ConfigurationDB import ConfigurationDB
 from Configurator.ConfigurationDefinition import ConfigurationDefinition,Configuration
-from Configurator.Model import LatinHyperCube
+from Configurator.Model import LatinHyperCube, NeuralNetwork
 from numpy import ndarray
 
 #TODO: all testing
@@ -42,16 +42,17 @@ class ConfigurationGenerator:
     #We could provide the model with the average features of a random sample of the runs, leading to a number of possible inputs to the model = to #runs choose 1 +  # runs choose 2 + etc 
     #This might give the ConfigurationGenerator a way to make multiple attempts when a models predictions don't meet the constraints
 
-    #generate a single new config without features 
-    def _generate(self) -> Configuration:
+    #generate a single new config without using a feature vector
+    def _generateWithoutFeatures(self) -> Configuration:
         raise NotImplementedError    
 
     #process the provided features to produce a new configuration
-    def _generate(self, features:ndarray) -> Configuration:
+    def _generateWithFeatures(self, features:ndarray) -> Configuration:
         raise NotImplementedError
 
     #updates the generation process based on the collected data 
     def update(self, confDB:ConfigurationDB) -> None:
+        #remember, it is possible that multiple threads may be using a model, thus models are protected by a lock 
         raise NotImplementedError
     
 
@@ -59,9 +60,9 @@ class ConfigurationGenerator:
     #this is just a wrapper to handle such cases
     def generate(self, features:ndarray= None) -> Configuration:
         if features is None:
-            conf = self._generate() 
+            conf = self._generateWithoutFeatures() 
         else:
-            conf = self._generate(features)
+            conf = self._generateWithFeatures(features)
 
         return Configuration(self.confDef, conf)
 
@@ -74,12 +75,12 @@ class RandomGenerator(ConfigurationGenerator):
         super(RandomGenerator,self).__init__(confDef) 
         self.model = LatinHyperCube(1000, confDef, seed) 
 
-    #LatinHyperCube ignores features entirely, its a random sampler 
-    def _generate(self) -> Configuration:
+    #LatinHyperCube ignores features entirely, its a random sampler
+    def _generateWithoutFeatures(self) -> Configuration:
         return self.model.generate(None) 
 
     #LatinHyperCube ignores features entirely, its a random sampler
-    def _generate(self, features:ndarray) -> Configuration:
+    def _generateWithFeatures(self, features:ndarray=None) -> Configuration:
         return self.model.generate(None) 
 
     #nothing to do here, this is a random sampler
@@ -87,3 +88,23 @@ class RandomGenerator(ConfigurationGenerator):
         pass 
 
 
+"""
+A purely random configuration generator. With this generator LAAC will simply perform a random sampling of the configuration space.
+"""
+class NNBackedGenerator(ConfigurationGenerator):
+    def __init__(self, featureSize:int, confDef:ConfigurationDefinition, seed:int, cpu:bool = False):
+        super(NNBackedGenerator,self).__init__(confDef) 
+        self.rndModel = LatinHyperCube(1000, confDef, seed) 
+        self.nn = NeuralNetwork(featureSize, confDef, seed, cpu)
+
+    #LatinHyperCube ignores features entirely, its a random sampler
+    def _generateWithoutFeatures(self) -> Configuration:
+        return self.rndModel.generate(None) 
+
+    #LatinHyperCube ignores features entirely, its a random sampler
+    def _generateWithFeatures(self, features:ndarray=None) -> Configuration:
+        return self.nn.generate(features) 
+
+    #nothing to do here, this is a random sampler
+    def update(self, confDB:ConfigurationDB) -> None:
+        self.nn.update(confDB)
