@@ -32,6 +32,7 @@ import json
 from random import Random
 import numpy as np
 import copy
+import threading
 
 #TODO: LAAC should have an "evaluate invalid configurations" option, if False, invalids get an impossibly bad quality, otherwise run them and get a quality
 
@@ -69,13 +70,16 @@ class Algorithm:
         #         not the average performance of some specific sequence that came from that inital config 
 
         #The point is, re-running is silly
+        pass
 
     #note, termination condition needs to come from above, 
     #its possible that we will produce cases which stagnate for a while, then see improvement 
     #the specific conditions which indicate time to terminate will need to be adapted based on observation, and specific to different problems 
     #the initial condition will probably a total FE limit 
-    def run(self, instance: Instance, initialConfig: Configuration, characterizer: Characterizer, model: ConfigurationGenerator, terminationCondition: TerminationCondition, threadID: int, runSeed: int) -> Run:
+    def run(self, instance: Instance, initialConfig: Configuration, characterizer: Characterizer, model: ConfigurationGenerator, terminationCondition: TerminationCondition, runSeed: int) -> Run:
         
+        threadID = threading.get_ident()
+
         rng = Random(runSeed)
 
         #A Run is simply a list of configurations 
@@ -84,16 +88,15 @@ class Algorithm:
         
         restore = "" 
 
-        conf = copy.deepcopy(initialConfig)
+        #TODO: I had a deepcopy here, I don't think I need it :S
+        conf = initialConfig
        
         while not terminationCondition.terminate(theRun):
 
             #If the configuration is invalid, and LAAC should not evaluate invalid configs 
             if not conf.valid and not self.evaluateInvalid:
+                print("I shouldn't see this")
                 #construct a dummy record with None features, solutions, etc 
-
-                
-
                 features = None  #no features 
                 result =    {
                                 "solutions":
@@ -115,7 +118,6 @@ class Algorithm:
                 conf = model.generate(features)
 
             else:
-
                 seed = rng.randint(0,4000000000) #A seed for the execution of the target algorithm
 
                 #construct our command 
@@ -136,10 +138,8 @@ class Algorithm:
                 loc = output.find("RESULTS FOLLOW")
                 result = json.loads(output[loc + 14:])
                 
-                #TODO: uncomment and fill in
                 # #Finish populating the Configuration with data
-                features = characterizer.characterize(result)
-                # conf.features = features
+                conf.features = characterizer.characterize(result)
                 conf.rawResult = result
                 conf.seed = seed 
                 conf.threadID = threadID 
@@ -148,7 +148,7 @@ class Algorithm:
                 theRun.configurations.append(conf)
 
                 # #Generate the next configuration
-                conf = model.generate(features)
+                conf = model.generate(conf.features)
 
             #ensure we pick up where the algorithm left off
             restore = result["algorithmState"]
