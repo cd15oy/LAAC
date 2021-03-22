@@ -22,20 +22,19 @@ The main file. This file can be run to configure your algorithm after valid LAAC
 from Configurator.Evaluator import SimpleEvaluator
 from Configurator.ConfigurationDB import ConfigurationDB
 from Configurator.Run import Run
-from Configurator.Runner import RandomInstanceRunner, Runner
+from Configurator.Runner import RandomInstanceRunner
 from Configurator.Characterizer import Characterizer
 from Configurator.ConfigurationGenerator import NNBackedGenerator, RandomGenerator
 from Configurator.ProblemSuite import ProblemSuite
-from Configurator.ConfigurationDefinition import ConfigurationDefinition,Configuration
+from Configurator.ConfigurationDefinition import ConfigurationDefinition
 from Configurator.Algorithm import Algorithm
 from Configurator.TerminationCondition import FELimit
 import json
-import sys 
 import argparse
 from random import Random, randint
-
+from typing import List
 #Counts the total FEs consumed by a list of runs 
-def countFEs(runs:list[Run]) -> int:
+def countFEs(runs:List[Run]) -> int:
     total = 0 
     for run in runs:
         for conf in run.configurations:
@@ -95,8 +94,8 @@ if __name__ == "__main__":
 
     #TODO: figre out how Configure should be made aware of the problem dimensionality 
     #also, what about configuring for problems of different dimensionality simutaneously?
-    #model = NNBackedGenerator(94, configurationDefinition, rng.randint(0,4000000000), cpu=True)
-    model = RandomGenerator(configurationDefinition, rng.randint(0,4000000000))
+    model = NNBackedGenerator(154, configurationDefinition, rng.randint(0,4000000000), cpu=True)
+    #model = RandomGenerator(configurationDefinition, rng.randint(0,4000000000))
 
     #TODO: if you run python3 Configure.py -scenario optFiles/scenario.json -seed 12345 you'll get a json decoding error eventually
     #find it and fix it
@@ -124,7 +123,8 @@ if __name__ == "__main__":
         # from guppy import hpy
         # h = hpy()
         # print(h.heap())
-        # print(totalFEsConsumed,FELIMIT)
+        
+        print("Progress: {}/{}".format(totalFEsConsumed,FELIMIT))
 
         for run in newRuns:
             configDB.addRun(run)
@@ -138,20 +138,20 @@ if __name__ == "__main__":
         newRuns = runner.schedule(configsPerIteration, minRunsPerConfig, model)
         totalFEsConsumed += countFEs(newRuns)
 
-        # for prob in configDB.records:
-        #     for rcrd in configDB.records[prob]:
-        #         record = configDB.records[prob][rcrd]
-        #         if prob not in best:
-        #             best[prob] = float('inf')
-        #         if record.desirable():
-        #             quality = []
-        #             for run in record.getRuns():
-        #                 quality.append(run.configurations[-1].rawResult["solutions"][-1]["quality"]) 
-        #             from statistics import mean
-        #             quality = mean(quality)
-        #             if quality < best[prob]:
-        #                 best[prob] = quality 
-        # print(best)
+        for prob in configDB.records:
+            for rcrd in configDB.records[prob]:
+                record = configDB.records[prob][rcrd]
+                if prob not in best:
+                    best[prob] = float('inf')
+                if record.desirable():
+                    quality = []
+                    for run in record.getRuns():
+                        quality.append(run.configurations[-1].rawResult["solutions"][-1]["quality"]) 
+                    from statistics import mean
+                    quality = mean(quality)
+                    if quality < best[prob]:
+                        best[prob] = quality 
+        print(best)
 
     print("FE LIMIT PASSED")
     #TODO output results in some format
