@@ -20,6 +20,7 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 This class represents the target algorithm. 
 """
 
+from json.decoder import JSONDecodeError
 from Configurator.ConfigurationGenerator import ConfigurationGenerator
 from Configurator.Model import Model
 from Configurator.ConfigurationDefinition import Configuration  
@@ -30,8 +31,6 @@ from Configurator.Characterizer import Characterizer
 from subprocess import Popen, PIPE
 import json
 from random import Random
-import numpy as np
-import copy
 import threading
 
 #TODO: LAAC should have an "evaluate invalid configurations" option, if False, invalids get an impossibly bad quality, otherwise run them and get a quality
@@ -43,35 +42,7 @@ class Algorithm:
         self.staticArgs = staticArgs
         self.evaluateInvalid = evaluateInvalid
     
-    #Re-run the sequence of configurations contained in run using instance, and produce a new run 
-    def rerun(self,instance:Instance, run:Run, characterizer: Characterizer, threadID:int, runSeed:int) -> Run:
-        #READMEWEDNESDAY
-        # So, I think I may be miss-representing a run here 
-        # the purpose of doing multiple runs on multiple seeds is getting a decent estimate of performance
-        #     since we don't know what seed/initial config the algorithm has when a user actually runs it, we want some picture of how a config does over multiple instances/seeds 
-
-        # However, LAAC will use multiple/many configs a different points throughout the run 
-        #     the results obtained from one config, directly influence the next config chosen 
-        #         (if not random) 
-        # In this situation statically rerunning a previous sequence of configs does not make sense
-        #     doing so implicitly assumes that the initial config will deterministically lead to whatever the next config is 
-        #         but that't not necessarily true 
-        #     the initial config run on a different seed could produce different characteristics, and thus lead to a different second config 
-
-        # re-running a static sequence of configs gives us information on how that static sequence performs on average
-        #     but that information is useless, we don't intent to provide that static sequence as a solution 
-        #     it will only be used again in practice if the model produces it again at run time for some other seed 
-
-        # SO, if the model produces the same sequence of configs for multiple seeds (and the same initial confg) on a probelm, thats fine 
-        #     re-running with different seeds actually tells us about the solutions the system will obtain 
-
-        # BUT if the model does not reproduce the same sequence on its own 
-        #     we need to know about the average performance of the sequences it produces for that initial config 
-        #         not the average performance of some specific sequence that came from that inital config 
-
-        #The point is, re-running is silly
-        pass
-
+  
     #note, termination condition needs to come from above, 
     #its possible that we will produce cases which stagnate for a while, then see improvement 
     #the specific conditions which indicate time to terminate will need to be adapted based on observation, and specific to different problems 
@@ -88,7 +59,6 @@ class Algorithm:
         
         restore = "" 
 
-        #TODO: I had a deepcopy here, I don't think I need it :S
         conf = initialConfig
        
         while not terminationCondition.terminate(theRun):
@@ -129,14 +99,20 @@ class Algorithm:
                 _stdout,_stderr = io.communicate() 
                 output = _stdout.decode()
 
-                #print(_stderr.decode()) #If you run into issues check out stderr, dont forget to print stderr in the target-algorithm too!
+                err = _stderr.decode() #If you run into issues check out stderr, dont forget to print stderr in the target-algorithm too!
+                if err.strip() != "":
+                    print(err)
 
                 #We expect everything after RESULTS FOLLOW to be the output for LAAC
                 #The output should be properly formatted JSON 
                 #TODO: More informative Errors/Exceptions
                 #print(output)
                 loc = output.find("RESULTS FOLLOW")
-                result = json.loads(output[loc + 14:])
+                try:
+                    result = json.loads(output[loc + 14:])
+                except JSONDecodeError:
+                    print(output)
+                    raise ValueError
                 
                 # #Finish populating the Configuration with data
                 conf.features = characterizer.characterize(result)
