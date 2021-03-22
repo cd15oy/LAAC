@@ -43,17 +43,18 @@ if len(sys.argv) > 3:
         
         elif re.match("-s\d+",sys.argv[i]) is not None:
             stds.append((sys.argv[i], sys.argv[i+1]))
-
+       
         else:
             others.append(sys.argv[i])
-            others.append(sys.argv[i+1])
+            if i + 1 < len(sys.argv):
+                others.append(sys.argv[i+1])
 
     #reformat the mean and std args into a single string
     sorted(means)
     sorted(stds)
 
-    values = ["{0} {1}".format(m[1],s[1]) for m,s in zip(means,stds)]
-    stepSizes = "-stepSizes {0}".format(" ".join(values)) 
+    values = ["{0},{1}".format(m[1],s[1]) for m,s in zip(means,stds)]
+    stepSizes = "-stepSizes [{0}]".format(",".join(values)) 
 
     #finally construct the arg string 
 
@@ -80,7 +81,9 @@ _stdout,_stderr = io.communicate()
 print("RESULTS FOLLOW") #LAAC will interpret everything after the line RESULTS FOLLOW as the algorithm output 
 print(_stdout.decode()) 
 
-#print(_stderr.decode()) #usefull if you have issues 
+err = _stderr.decode() #usefull if you have issues
+if err.strip() != "":
+    print(err) 
 
 #If you're having issues the first place to check would be the output on stderr
 #print(_stderr.decode()) 
