@@ -20,6 +20,7 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 This file implements a simple random search algorithm to be used for demonstrating LAAC. In practice there is no need for the target-algorithm to be in python and the example target-algorithm.py wrapper is written for general use. 
 """
 
+from math import sin, sqrt
 from random import random,seed,gauss,randint
 import argparse
 from time import time 
@@ -39,31 +40,38 @@ def shiftAndRotate(x, shift, rotation):
 
     return x2 
 
-#A simple function to optimize 
+#The Rosenbrock function 
 def f1(x, shift, rotation):
     x2 = shiftAndRotate(x, shift, rotation)
     tot = 0 
-    for v in x2:
-        tot += abs(v) 
+    for i,v in enumerate(x2[1:]):
+        tot += ((100*((v-(x2[i]**2))**2)) + (x2[i]**2))
     return tot 
      
-#Another simple function to optimize 
+#The Eggholder function 
 def f2(x, shift, rotation):
     x2 = shiftAndRotate(x, shift, rotation)
-    tot = 1
-    for v in x2:
-        tot *= v 
+    tot = 0
+    for i,v in enumerate(x2[1:]):
+        tot += (-(v+47)*sin(sqrt(abs(v + (x2[i]/2) + 47.0)))) + sin(sqrt(abs(x2[i] - (v + 47))))*(-x2[i])
     return tot 
 
+def parseList(x):
+    if x is None:
+        return None 
+
+    x = x[1:-1] #remove [ and ] from start and end of string  
+    x = [float(v) for v in x.split(",")]
+    return x 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description='Run a simple random search.')
-    parser.add_argument("-stepSizes", action="store", nargs='+', default=None , help="Distribution parameters used to generate steps for each problem dimension", dest="stepSizes")
+    parser.add_argument("-stepSizes", action="store", nargs='?', type=parseList, default=None , help="Distribution parameters used to generate steps for each problem dimension", dest="stepSizes")
     parser.add_argument("-d", action="store", nargs='?', default=5, type=int, help="The number of dimensions to run on.", dest="dimensionality")
     parser.add_argument("-i", action="store", nargs='?', default=1000, type=int, help="The number of iterations to run.", dest="iterations")
     parser.add_argument("-s", action="store", nargs='?', default=10, type=int, help="The number of samples per iteration.", dest="samples")
     parser.add_argument("-pSeed", action="store", nargs='?', default=12345, type=int, help="The seed for initializing the problems.", dest="pSeed")
     parser.add_argument("-aSeed", action="store", nargs='?', default=randint(0,4000000000) , type=int, help="The seed for random number generation during the search", dest="aSeed") #This should be random so separate runs still have different trajectories by default 
-    parser.add_argument("-restore", action="store", nargs='+', default=None , help="Continue the search from the provided solution.", dest="restore")
+    parser.add_argument("-restore", action="store", nargs='?',type=parseList, default=None , help="Continue the search from the provided solution.", dest="restore")
     parser.add_argument("-p", action="store", nargs='?', default="f1", type=str, help="The problem to optimize", dest="problem", choices=["f1","f2"])
     parser.add_argument("-shift", action="store", nargs='?', default=True, type=bool, help="Shift the function?", dest="shift", choices=[True,False])
     parser.add_argument("-rotate", action="store", nargs='?', default=True, type=bool, help="Rotate the function?", dest="rotate", choices=[True,False])
@@ -73,7 +81,7 @@ if __name__ == "__main__":
 
     STEPS = [[0,1] for x in range(args.dimensionality)]
     if args.stepSizes is not None:
-        vals = [float(x) for x in args.stepSizes] 
+        vals = [x for x in args.stepSizes] 
         for x in range(0, 2*args.dimensionality,2):
             STEPS[int(x/2)][0] = vals[x]
             STEPS[int(x/2)][1] = vals[x+1]  
@@ -115,7 +123,7 @@ if __name__ == "__main__":
 
     #restore a previous found solution as the starting point if needed 
     if args.restore:
-        solution = [float(x) for x in args.restore]
+        solution = [x for x in args.restore]
         fitness = prob(solution, SHIFT, ROTATE)
     else:
         solution = [((random()*2)-1)*RANGE for x in range(args.dimensionality)]
@@ -172,10 +180,8 @@ if __name__ == "__main__":
 
     #algorithm state should be a string that can be passed as flags to the algorithm to "pick up" where this run left off 
     #problem/instance information does not need to be included LAAC will provide that on its own 
-    restore = "" 
-    for v in solution:
-        restore += str(v) + " "
-    result["algorithmState"] = "-restore {0}".format(restore)
+    restore = ",".join([str(v) for v in solution])
+    result["algorithmState"] = '-restore [{0}]'.format(restore)
 
     #time used by the run
     result["time"] = totalTime
