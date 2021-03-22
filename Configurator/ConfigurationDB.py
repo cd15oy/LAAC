@@ -20,6 +20,7 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 Stores the collection of configurations that have been tested. Organized by run, which allows us to know the sequence in which configs were used.
 """
 import time
+from typing import List
 from Configurator.Run import Run
 
 #TODO: finish fleshing out, need to store all configs and runs, flag un flag runs
@@ -49,7 +50,7 @@ class ConfigurationDB:
         rcrdsForProblem[id].reRun(False)
 
     #produces a list of configurations which have been flagged for an additional run
-    def getReRuns(self) -> list[Run]:
+    def getReRuns(self) -> List[Run]:
         ret = [] 
         for prob in self.records:
             for rcrd in self.records[prob]:
@@ -75,7 +76,7 @@ class Record:
         self._runs.append(run)
         self._updatedAt = int(time.time()*1000000)
 
-    def getRuns(self) -> list[Run]:
+    def getRuns(self) -> List[Run]:
         return self._runs
 
     def reRun(self, val:bool=None) -> None:
