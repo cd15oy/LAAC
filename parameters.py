@@ -159,6 +159,246 @@ parameters =    {   #Each parameter to tune needs a definition in the paremters 
                             "lower":0.01,
                             "upper":2
                         },
+                        {                   
+                            "name":"mean6",
+                            "type":"real",
+                            "flag":"-m6",
+                            "default":0,
+                            "lower":-1,
+                            "upper":1
+                        },
+                        {                   
+                            "name":"std6",
+                            "type":"real",
+                            "flag":"-s6",
+                            "default":1,
+                            "lower":0.01,
+                            "upper":2
+                        },
+                        {                   
+                            "name":"mean7",
+                            "type":"real",
+                            "flag":"-m7",
+                            "default":0,
+                            "lower":-1,
+                            "upper":1
+                        },
+                        {                   
+                            "name":"std7",
+                            "type":"real",
+                            "flag":"-s7",
+                            "default":1,
+                            "lower":0.01,
+                            "upper":2
+                        },
+                        {                   
+                            "name":"mean8",
+                            "type":"real",
+                            "flag":"-m8",
+                            "default":0,
+                            "lower":-1,
+                            "upper":1
+                        },
+                        {                   
+                            "name":"std8",
+                            "type":"real",
+                            "flag":"-s8",
+                            "default":1,
+                            "lower":0.01,
+                            "upper":2
+                        },
+                        {                   
+                            "name":"mean9",
+                            "type":"real",
+                            "flag":"-m9",
+                            "default":0,
+                            "lower":-1,
+                            "upper":1
+                        },
+                        {                   
+                            "name":"std9",
+                            "type":"real",
+                            "flag":"-s9",
+                            "default":1,
+                            "lower":0.01,
+                            "upper":2
+                        },
+                        {                   
+                            "name":"mean10",
+                            "type":"real",
+                            "flag":"-m10",
+                            "default":0,
+                            "lower":-1,
+                            "upper":1
+                        },
+                        {                   
+                            "name":"std10",
+                            "type":"real",
+                            "flag":"-s10",
+                            "default":1,
+                            "lower":0.01,
+                            "upper":2
+                        },
+                        {                   
+                            "name":"mean11",
+                            "type":"real",
+                            "flag":"-m11",
+                            "default":0,
+                            "lower":-1,
+                            "upper":1
+                        },
+                        {                   
+                            "name":"std11",
+                            "type":"real",
+                            "flag":"-s11",
+                            "default":1,
+                            "lower":0.01,
+                            "upper":2
+                        },
+                        {                   
+                            "name":"mean12",
+                            "type":"real",
+                            "flag":"-m12",
+                            "default":0,
+                            "lower":-1,
+                            "upper":1
+                        },
+                        {                   
+                            "name":"std12",
+                            "type":"real",
+                            "flag":"-s12",
+                            "default":1,
+                            "lower":0.01,
+                            "upper":2
+                        },
+                        {                   
+                            "name":"mean13",
+                            "type":"real",
+                            "flag":"-m13",
+                            "default":0,
+                            "lower":-1,
+                            "upper":1
+                        },
+                        {                   
+                            "name":"std13",
+                            "type":"real",
+                            "flag":"-s13",
+                            "default":1,
+                            "lower":0.01,
+                            "upper":2
+                        },
+                        {                   
+                            "name":"mean14",
+                            "type":"real",
+                            "flag":"-m14",
+                            "default":0,
+                            "lower":-1,
+                            "upper":1
+                        },
+                        {                   
+                            "name":"std14",
+                            "type":"real",
+                            "flag":"-s14",
+                            "default":1,
+                            "lower":0.01,
+                            "upper":2
+                        },
+                        {                   
+                            "name":"mean15",
+                            "type":"real",
+                            "flag":"-m15",
+                            "default":0,
+                            "lower":-1,
+                            "upper":1
+                        },
+                        {                   
+                            "name":"std15",
+                            "type":"real",
+                            "flag":"-s15",
+                            "default":1,
+                            "lower":0.01,
+                            "upper":2
+                        },
+                        {                   
+                            "name":"mean16",
+                            "type":"real",
+                            "flag":"-m16",
+                            "default":0,
+                            "lower":-1,
+                            "upper":1
+                        },
+                        {                   
+                            "name":"std16",
+                            "type":"real",
+                            "flag":"-s16",
+                            "default":1,
+                            "lower":0.01,
+                            "upper":2
+                        },
+                        {                   
+                            "name":"mean17",
+                            "type":"real",
+                            "flag":"-m17",
+                            "default":0,
+                            "lower":-1,
+                            "upper":1
+                        },
+                        {                   
+                            "name":"std17",
+                            "type":"real",
+                            "flag":"-s17",
+                            "default":1,
+                            "lower":0.01,
+                            "upper":2
+                        },
+                        {                   
+                            "name":"mean18",
+                            "type":"real",
+                            "flag":"-m18",
+                            "default":0,
+                            "lower":-1,
+                            "upper":1
+                        },
+                        {                   
+                            "name":"std18",
+                            "type":"real",
+                            "flag":"-s18",
+                            "default":1,
+                            "lower":0.01,
+                            "upper":2
+                        },
+                        {                   
+                            "name":"mean19",
+                            "type":"real",
+                            "flag":"-m19",
+                            "default":0,
+                            "lower":-1,
+                            "upper":1
+                        },
+                        {                   
+                            "name":"std19",
+                            "type":"real",
+                            "flag":"-s19",
+                            "default":1,
+                            "lower":0.01,
+                            "upper":2
+                        },
+                        {                   
+                            "name":"mean20",
+                            "type":"real",
+                            "flag":"-m20",
+                            "default":0,
+                            "lower":-1,
+                            "upper":1
+                        },
+                        {                   
+                            "name":"std20",
+                            "type":"real",
+                            "flag":"-s20",
+                            "default":1,
+                            "lower":0.01,
+                            "upper":2
+                        },
                         {
                             "name":"greedy",
                             "type":"categorical",
@@ -189,15 +429,15 @@ scenario =  {
                 "scenario": {
                                 "problemDefs":"optFiles/problems.json",         #The location of the problem definition file 
                                 "parameterDefs":"optFiles/parameters.json",    #The location of the the parameter definitions 
-                                "runFELimit": 10000,                            #The maximum number of function evaluations which can be consumed by a run of your algorithm
-                                "totalFELimit": 1000000,                        #The maximum number of FEs which can be consumed by LAAC 
+                                "runFELimit": 5000,                            #The maximum number of function evaluations which can be consumed by a run of your algorithm
+                                "totalFELimit": 100000,                        #The maximum number of FEs which can be consumed by LAAC 
                                 "minRunsPerConfig":1,                           #The minimum number of runs to consider when evaluating a configuration 
                                 "maxRunsPerConfig":30,                      #The maximum number of runs to consider when evaluating a configuration 
                                 "targetAlgorithm":"python3 target-algorithm.py",#The call to run the target algorithm 
-                                "staticArgs":"-d 5",                            #Arguments to be provided to every algorithm call, constant settings  
+                                "staticArgs":"-d 20",                            #Arguments to be provided to every algorithm call, constant settings  
                                 "strictConstraints": False,                     #Influences how strictly constraint expressions in the parameter definition are enforced
                                 "configsPerIteration":8,                      #The initial number of configurations to test per iteration of LAAC
-                                "threads":1,                                    #Threads to use for algorithm evaluations
+                                "threads":8,                                    #Threads to use for algorithm evaluations
                                 "seed":12345                                    #Seed for reproducibility
                             }
             }
