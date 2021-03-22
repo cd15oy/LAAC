@@ -51,6 +51,7 @@ class ConfigurationDefinition:
 
 import ast
 import operator as op
+from typing import List
 """
 Defines a constrain from an arithmetic expression 
 """
@@ -80,6 +81,8 @@ class Constraint:
     #ex when the node represents some constant, it returns the constant, which could be one of many types 
     def __eval(self,node):
         if isinstance(node, ast.Constant):
+            return node.n
+        elif isinstance(node, ast.Num): 
             return node.n
         elif isinstance(node, ast.BinOp): 
             return self.operators[type(node.op)](self.__eval(node.left), self.__eval(node.right))
@@ -172,7 +175,7 @@ class Integer(ParameterDefinition):
 
 #for defining categorical parameters
 class Categorical(ParameterDefinition):
-    def __init__(self,name:str, type:str, flag:str, default:str, options:list[str]):
+    def __init__(self,name:str, type:str, flag:str, default:str, options:List[str]):
         super(Categorical, self).__init__(name, type, flag) 
         self.options = options
         self.default = default
