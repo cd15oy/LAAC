@@ -16,14 +16,16 @@ You should have received a copy of the GNU Lesser General Public License
 along with this program.  If not, see <https://www.gnu.org/licenses/>.
 """
 
+from typing import List
 from Configurator.ConfigurationDefinition import ConfigurationDefinition
 from Configurator.ConfigurationDB import ConfigurationDB
 import threading
 import numpy as np
 from numpy import ndarray
-from random import Random
 import torch 
 from math import isfinite
+from random import Random,seed as setPythonSeed
+import os
 
 #TODO: all testing
 
@@ -106,7 +108,7 @@ class LatinHyperCube(Model):
             
         return self.configs.pop()
 
-    def __generateReals(self, n:int, lower:float, upper:float) -> list[float]:
+    def __generateReals(self, n:int, lower:float, upper:float) -> List[float]:
         binWidth = (upper - lower)/n
         vals = [] 
 
@@ -118,16 +120,16 @@ class LatinHyperCube(Model):
         self.rng.shuffle(vals) 
         return vals
 
-    def __generateInts(self, n:int, lower:int, upper:int) -> list[int]:
+    def __generateInts(self, n:int, lower:int, upper:int) -> List[int]:
         return [int(x) for x in self.__generateReals(n, lower, upper)]
 
-    def __generateCategorical(self, n:int, choices:list[str]):
+    def __generateCategorical(self, n:int, choices:List[str]):
         vals = [choices[x%len(choices)] for x in range(n)]
         self.rng.shuffle(vals)
 
         return vals 
 
-
+#TODO: tests
 class _NeuralNetworkModel(torch.nn.Module):
     def __init__(self, inputSize:int, configDef:ConfigurationDefinition, cpu:bool=False):
         super(_NeuralNetworkModel, self).__init__()
@@ -140,12 +142,12 @@ class _NeuralNetworkModel(torch.nn.Module):
                         )
         
         self.features = torch.nn.Sequential(
-                            torch.nn.Linear(500, 300),
+                            torch.nn.Linear(500, 500),
                             torch.nn.Hardtanh(-1,1),
-                            torch.nn.Linear(300, 300),
-                            torch.nn.Hardtanh(-1,1),
-                            torch.nn.Linear(300, 500),
-                            torch.nn.Hardtanh(-1,1)
+                            # torch.nn.Linear(300, 300),
+                            # torch.nn.Hardtanh(-1,1),
+                            # torch.nn.Linear(300, 500),
+                            # torch.nn.Hardtanh(-1,1)
                         )
 
         #construct regressors (and possibly classifiers) for each parameter to predict
@@ -169,32 +171,35 @@ class _NeuralNetworkModel(torch.nn.Module):
     def forward(self, x):
         x = self.input(x) 
         x = self.features(x) 
-
         out = [] 
         for param,head,criteria in self.output:
             out.append((param,head(x),criteria))
         
         return out
 
-class _Data(torch.utils.data.Dataset):
-    def __init__(self, examples):
-        super(_Data, self).__init__() 
-        self.examples = examples
+#TODO:ideally the pytorch training should be reproducible as well 
+#So, I've tested using python 3.7, and that seems to solve the segfault at closing. The segfault seems to be a known recentish issue
+#HOWEVER, using 3.7 does not fix the reproducibility issue 
+#It appears that the reproducibility issue had to do with inconsistent round off errors 
+#when all inputs are set to reproducibly randomly generated arrays with no large numbers, output it reproducible (both threaded and unthreaded)
+#so we need a better/more consistant way of dealing with nans, infs, and large numbers in the initial input 
 
-    def __len__(self):
-        return len(self.examples) 
-
-    def __getitem__(self, idx):
-        data,target = self.examples[idx] 
-        return data,target
-
+#TODO: tests
 class NeuralNetwork(Model):
     def __init__(self, inputSize:int, configDef:ConfigurationDefinition, seed:int, cpu:bool=False):
         super(NeuralNetwork, self).__init__() 
         self.rng = Random(seed) 
-        torch.set_deterministic(True)
-        torch.manual_seed(self.rng.randint(0,4000000000))
         #self.device = torch.device("cuda:0" if torch.cuda.is_available() and not cpu else "cpu")
+        #A bunch of stuff to make sure pytorch is reproducible 
+        #Commenting this out may improve performance in some cases 
+        torch.set_deterministic(True)
+        os.environ['PYTHONHASHSEED'] = str(seed)
+        setPythonSeed(seed)
+        torch.manual_seed(self.rng.randint(0,4000000000))
+        torch.cuda.manual_seed_all(self.rng.randint(0,4000000000))
+        torch.backends.cudnn.deterministic = True
+        torch.backends.cudnn.benchmark = False
+        np.random.seed(self.rng.randint(0,4000000000))
 
         self.predictor = _NeuralNetworkModel(inputSize, configDef) 
         self.predictor.eval()
@@ -205,6 +210,7 @@ class NeuralNetwork(Model):
         self.batchSize = 32
         self.lr = 0.0001
         self.momentum = 0.001
+        self.optimizer =torch.optim.RMSprop(self.predictor.parameters(), lr=self.lr, momentum=self.momentum)
          
 
     #train the model
@@ -222,34 +228,31 @@ class NeuralNetwork(Model):
         examples = self.rng.choices(examples, k=128)
         
         #convert the runs into training examples 
-        tmp = [] 
+        featureArray = []
+        configs = [] 
         for run in examples:
             for i,c in enumerate(run.configurations[1:]):
-                tmp.append((run.configurations[i].features, c))
-        examples = tmp
-
-        featureArray = np.asarray([x[0] for x in examples]) 
-
-        avg = np.mean(featureArray, axis=0) 
-        std = np.std(featureArray, axis=0) 
-
-        dataset = _Data(examples) 
-        dataloader = torch.utils.data.DataLoader(dataset, batch_size=32, shuffle=True) 
-
+                featureArray.append(run.configurations[i].features)
+                configs.append(c)
+    
+        
+        featureArray = self.__cleanInput(featureArray)
+        
+        examples = [x for x in zip(featureArray,configs)]
+  
         self.predictor.train()
 
-        optimizer = torch.optim.RMSprop(self.predictor.parameters(), lr=self.lr, momentum=self.momentum) 
+        optimizer = self.optimizer 
         optimizer.zero_grad()
-        
-        for i,data in enumerate(dataset):
-            pattern,target = data 
+        loss = None
+        for i, data in enumerate(examples):
+            #data = dataset.__get__(i) #enumerate(dataset):
+            pattern,target = data  
 
-            #calculated and propogate loss for all outputs
-            pattern = (pattern - avg)/std 
+            #calculated and propagate loss for all outputs
             pattern = torch.from_numpy(pattern).unsqueeze(0) 
 
             output = self.predictor(pattern.float())
-
             for out in output:
                 targetVal = target.values[out[0].name].value 
 
@@ -261,12 +264,23 @@ class NeuralNetwork(Model):
                 targetVal = torch.tensor(targetVal).unsqueeze(0)
 
                 criteria = out[2]
-                loss = criteria(out[1], targetVal) 
-                loss.backward(retain_graph=True)
+                if loss is None:
+                    loss = criteria(out[1], targetVal) 
+                else:
+                    loss += criteria(out[1], targetVal)
+            
+            
 
-            if i % self.batchSize == 0:
+            if (1+i) % self.batchSize == 0:
+                loss = loss/self.batchSize
+                loss.backward()
+                print(loss.item())
                 optimizer.step()
                 optimizer.zero_grad()
+                loss = None
+
+        #optimizer.step()
+        # optimizer.zero_grad()
 
 
         self.predictor.eval()
@@ -274,8 +288,11 @@ class NeuralNetwork(Model):
 
     #generate a config from the provided features
     def _generate(self, features:ndarray) -> dict:
-        dta = torch.from_numpy(np.asarray([features],dtype=np.float32))
+        dta = self.__cleanInput(np.asarray([features],dtype=np.float32))
+        dta = torch.from_numpy(dta)
         #dta.to(self.device) 
+
+        
         preds = self.predictor(dta)
         ret = dict() 
 
@@ -290,6 +307,24 @@ class NeuralNetwork(Model):
                 ret[pred[0].name] = self.__predToCategory(pred[1][0], pred[0])
 
         return ret
+
+    #TODO: update this to better handle nans, infs, large numbers, and potential roundoff errors
+    def __cleanInput(self,x):
+
+        featureArray = np.nan_to_num(x, nan=0, posinf=3.4028237e16, neginf=-3.4028237e16)
+
+        featureArray = np.asarray(featureArray, np.float32)
+    
+        avg = np.mean(featureArray, axis=0)
+        std = np.std(featureArray, axis=0) 
+        std[std == 0] = 0.000001
+        avg = np.nan_to_num(avg)
+        featureArray = ((featureArray - avg)/std)
+        featureArray = np.nan_to_num(featureArray)
+
+        
+
+        return featureArray
 
             
     def __denormalizeNumeric(self, value, param):
