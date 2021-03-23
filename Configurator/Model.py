@@ -177,13 +177,6 @@ class _NeuralNetworkModel(torch.nn.Module):
         
         return out
 
-#TODO:ideally the pytorch training should be reproducible as well 
-#So, I've tested using python 3.7, and that seems to solve the segfault at closing. The segfault seems to be a known recentish issue
-#HOWEVER, using 3.7 does not fix the reproducibility issue 
-#It appears that the reproducibility issue had to do with inconsistent round off errors 
-#when all inputs are set to reproducibly randomly generated arrays with no large numbers, output it reproducible (both threaded and unthreaded)
-#so we need a better/more consistant way of dealing with nans, infs, and large numbers in the initial input 
-
 #TODO: tests
 class NeuralNetwork(Model):
     def __init__(self, inputSize:int, configDef:ConfigurationDefinition, seed:int, cpu:bool=False):
