@@ -25,6 +25,8 @@ Responsible for examining and providing a relative evaluation of the configurati
 A Record in a ConfigurationDB has two main flags that an Evaluator needs to care about. desirable, and reRun. desirable indicates that the configuration is desirable, that it would be good if newly generated configurations had similar or better performance. reRun is set to True if the evaluator would like to have more runs of the configuration 
 """
 
+#TODO tests 
+
 #All we need is an evaluate method which will process the ConfigurationDB, and update the records 
 class Evaluator:
     def evaluate(self, configDB:ConfigurationDB) -> None :
