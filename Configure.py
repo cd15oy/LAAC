@@ -87,14 +87,11 @@ if __name__ == "__main__":
 
     suite = ProblemSuite(problems, rng.randint(0,4000000000)) 
 
-    #model = RandomGenerator(configurationDefinition, rng.randint(0,4000000000))
-    
-
-    characterizer = Characterizer(rng.randint(0,4000000000))
+    characterizer = Characterizer()
 
     #TODO: figre out how Configure should be made aware of the problem dimensionality 
     #also, what about configuring for problems of different dimensionality simutaneously?
-    model = NNBackedGenerator(154, configurationDefinition, rng.randint(0,4000000000), cpu=True)
+    model = NNBackedGenerator(159, configurationDefinition, rng.randint(0,4000000000), cpu=True)
     #model = RandomGenerator(configurationDefinition, rng.randint(0,4000000000))
 
     #TODO: if you run python3 Configure.py -scenario optFiles/scenario.json -seed 12345 you'll get a json decoding error eventually
@@ -156,42 +153,3 @@ if __name__ == "__main__":
     print("FE LIMIT PASSED")
     #TODO output results in some format
 
-# if __name__ == "__main__":
-
-
-#     #read the user provided configuration defs 
-#     with open("optFiles/parameters.json", 'r') as inF:
-#         configDefs = json.loads(inF.read())
-#     
-
-#     # #construct a concrete configuration for the run 
-#     # vals =  {
-#     #                 "iterations":50,
-#     #                 "samples":4,
-#     #                 "mean1":-1.0,
-#     #                 "std1":1.0,
-#     #                 "mean2":0.0,
-#     #                 "std2":1.0,
-#     #                 "mean3":0.0,
-#     #                 "std3":1.0,
-#     #                 "mean4":0.0,
-#     #                 "std4":1.0,
-#     #                 "mean5":0.0,
-#     #                 "std5":1.0,
-#     #                 "greedy":"True"
-#     #             }
-#     # conf = Configuration(configurationDefinition, vals)
-
-#     # print(conf.valid)
-
-#     #construct the instance 
-#     with open("optFiles/problems.json", 'r') as inF:
-#         problemDefs = json.loads(inF.read())
-#     
-#     instance = suite.generateN(1)[0]
-
-
-
-#     ret = r.schedule(10, 5, model)
-
-#     print([x.configurations[-1].rawResult for x in ret])
