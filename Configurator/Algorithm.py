@@ -22,7 +22,6 @@ This class represents the target algorithm.
 
 from json.decoder import JSONDecodeError
 from Configurator.ConfigurationGenerator import ConfigurationGenerator
-from Configurator.Model import Model
 from Configurator.ConfigurationDefinition import Configuration  
 from Configurator.Run import Run 
 from Configurator.Problem import Instance
@@ -65,6 +64,7 @@ class Algorithm:
 
             #If the configuration is invalid, and LAAC should not evaluate invalid configs 
             if not conf.valid and not self.evaluateInvalid:
+                #TODO
                 print("I shouldn't see this")
                 #construct a dummy record with None features, solutions, etc 
                 features = None  #no features 
@@ -89,6 +89,7 @@ class Algorithm:
 
             else:
                 seed = rng.randint(0,4000000000) #A seed for the execution of the target algorithm
+                characterizeSeed = rng.randint(0,4000000000) #A seed for the random sampler in characterize
 
                 #construct our command 
                 toRun = " ".join([self.wrapperCall, str(threadID), str(seed), self.staticArgs, instance.toFlags(), conf.toFlags(), restore])
@@ -115,10 +116,11 @@ class Algorithm:
                     raise ValueError
                 
                 # #Finish populating the Configuration with data
-                conf.features = characterizer.characterize(result)
+                conf.features = characterizer.characterize(result, characterizeSeed)
                 conf.rawResult = result
                 conf.seed = seed 
                 conf.threadID = threadID 
+                conf.characterizeSeed = characterizeSeed
 
                 # #Store the finished configuration in the run 
                 theRun.configurations.append(conf)
