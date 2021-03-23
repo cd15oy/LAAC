@@ -93,3 +93,6 @@ class Record:
         else:
             self._desirable = val 
             self._updatedAt = int(time.time()*1000000)
+
+    def updatedAt(self):
+        return self._updatedAt
