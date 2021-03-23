@@ -12,7 +12,7 @@ struct Characteristics {
     double yDist[2]; 
     double pairwise[54];
     double FEM;
-    double grad[2];
+    double grad[7];
     double M[2];
     double stag[2];
     double * diversity; 
@@ -131,7 +131,7 @@ void characterize_cpp(double ** solutions, double * quality, double *** state, d
         delete[] ret; 
 
         ret = grad.calculate(*S);
-        for(int i = 0; i < 2; i++) {
+        for(int i = 0; i < 7; i++) {
             characteristics.grad[i] = ret[i];
             //std::cout << ret[i] << " "; 
         }
