@@ -17,6 +17,8 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 """
 
 import unittest
+from random import Random
+
 from Configurator.Characterizer import Characterizer
 
 """
@@ -26,151 +28,31 @@ Sanity checks for our Characterizer
 
 class TestCharacterizer(unittest.TestCase):
 
+    def rndSol(self):
+        return{"solution":[self.rng.random() for x in range(self.dimensionality)],"quality":self.rng.random()}
+
     def setUp(self):
-        pass 
+        self.seed = 12345 
+        self.dimensionality = 5 
+        self.rng = Random(self.seed)
 
     def tearDown(self):
         pass
 
     def testOutput(self):
         result = dict() 
-        result["solutions"] = [
-                {   "solution":[ 0.045, 2340.3, 1.0],
-                    "quality":100
-                },
-                {   "solution":[ 0.10, 30.33, 1.0],
-                    "quality":92
-                },
-                {   "solution":[ 0.045, 2340.3, 1.0],
-                    "quality":100
-                },
-                {   "solution":[ 0.10, 30.33, 1.0],
-                    "quality":92
-                },
-                {   "solution":[ 0.045, 2340.3, 1.0],
-                    "quality":100
-                },
-                {   "solution":[ 0.10, 30.33, 1.0],
-                    "quality":92
-                },
-                {   "solution":[ 0.045, 2340.3, 1.0],
-                    "quality":100
-                },
-                {   "solution":[ 0.10, 30.33, 1.0],
-                    "quality":92
-                },
-                {   "solution":[ 0.045, 2340.3, 1.0],
-                    "quality":100
-                },
-                {   "solution":[ 0.10, 30.33, 1.0],
-                    "quality":92
-                },
-                {   "solution":[ 0.045, 2340.3, 1.0],
-                    "quality":100
-                },
-                {   "solution":[ 0.10, 30.33, 1.0],
-                    "quality":92
-                }
-            ]
+        result["solutions"] = [self.rndSol() for x in range(250)]
 
         result["state"] = [
-                [ 
-                    {   "solution":[ 0.045, 2340.3, 1.0],
-                        "quality":100
-                    },
-                    {   "solution":[ 0.10, 30.33, 1.0],
-                        "quality":92
-                    }
-                ],
-                [ 
-                    {   "solution":[ 0.045, 2340.3, 1.0],
-                        "quality":100
-                    },
-                    {   "solution":[ 0.10, 30.33, 1.0],
-                        "quality":92
-                    }
-                ],
-                [ 
-                    {   "solution":[ 0.045, 2340.3, 1.0],
-                        "quality":100
-                    },
-                    {   "solution":[ 0.10, 30.33, 1.0],
-                        "quality":92
-                    }
-                ],
-                [ 
-                    {   "solution":[ 0.045, 2340.3, 1.0],
-                        "quality":100
-                    },
-                    {   "solution":[ 0.10, 30.33, 1.0],
-                        "quality":92
-                    }
-                ],
-                [ 
-                    {   "solution":[ 0.045, 2340.3, 1.0],
-                        "quality":100
-                    },
-                    {   "solution":[ 0.10, 30.33, 1.0],
-                        "quality":92
-                    }
-                ],
-                [ 
-                    {   "solution":[ 0.045, 2340.3, 1.0],
-                        "quality":100
-                    },
-                    {   "solution":[ 0.10, 30.33, 1.0],
-                        "quality":92
-                    }
-                ],
-                [ 
-                    {   "solution":[ 0.045, 2340.3, 1.0],
-                        "quality":100
-                    },
-                    {   "solution":[ 0.10, 30.33, 1.0],
-                        "quality":92
-                    }
-                ],
-                [ 
-                    {   "solution":[ 0.045, 2340.3, 1.0],
-                        "quality":100
-                    },
-                    {   "solution":[ 0.10, 30.33, 1.0],
-                        "quality":92
-                    }
-                ],
-                [ 
-                    {   "solution":[ 0.045, 2340.3, 1.0],
-                        "quality":100
-                    },
-                    {   "solution":[ 0.10, 30.33, 1.0],
-                        "quality":92
-                    }
-                ],
-                [ 
-                    {   "solution":[ 0.045, 2340.3, 1.0],
-                        "quality":100
-                    },
-                    {   "solution":[ 0.10, 30.33, 1.0],
-                        "quality":92
-                    }
-                ],
-                [ 
-                    {   "solution":[ 0.045, 2340.3, 1.0],
-                        "quality":100
-                    },
-                    {   "solution":[ 0.10, 30.33, 1.0],
-                        "quality":92
-                    }
-                ],
-                [ 
-                    {   "solution":[ 0.045, 2340.3, 1.0],
-                        "quality":100
-                    },
-                    {   "solution":[ 0.10, 30.33, 1.0],
-                        "quality":92
-                    }
-                ]
+                [self.rndSol() for x in range(50)] for y in range(250)
             ]
+                
+        #One of our landscape measures used in Characterize (the Pairwise class) uses multiple random samples of the solutions provided to estimate it's value. The measure is based on the pairwise distance between solutions, but obviously that gets expensive very quickly. We re-initialize the Characterizer here so the random samples will be the same in the first and second call, so the estimated values will be the same
 
-        c = Characterizer(12345) 
-        print(c.characterize(result))
+        c = Characterizer() 
+
+        a = c.characterize(result,self.seed)
+        b = c.characterize(result,self.seed)
+
+        for i,(x,y) in enumerate(zip(a,b)):
+            self.assertEqual(x,y, "Characterizing the same solution twice should yield the same result. Element {} was different".format(i))
