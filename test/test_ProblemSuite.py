@@ -16,6 +16,7 @@ You should have received a copy of the GNU Lesser General Public License
 along with this program.  If not, see <https://www.gnu.org/licenses/>.
 """
 
+from test.initializer import getProblemSuite
 import unittest
 from Configurator.ProblemSuite import ProblemSuite
 from Configurator.Problem import Problem, Instance 
@@ -28,12 +29,9 @@ Sanity checks for ProblemSuite, Problem and Instance.
 class TestProblemSuite(unittest.TestCase):
 
     def setUp(self):
-        from parameters import write
-        write()
-        import json 
-        with open("optFiles/problems.json", 'r') as inF:
-            self.problemDefs = json.loads(inF.read())
-        self.suite = ProblemSuite(self.problemDefs, 12345) 
+        self.seed = 12345 
+        self.problemDefs,self.suite = getProblemSuite(self.seed)
+        
 
     def tearDown(self):
         pass
