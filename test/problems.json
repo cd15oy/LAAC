@@ -1,0 +1,18 @@
+{
+  "problems": [
+    {
+      "name": "f1",
+      "flag": "-p f1",
+      "instances": [
+        "-pSeed $RANDOM"
+      ]
+    },
+    {
+      "name": "f2",
+      "flag": "-p f2",
+      "instances": [
+        "-pSeed $RANDOM"
+      ]
+    }
+  ]
+}

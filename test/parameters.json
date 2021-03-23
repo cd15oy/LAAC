@@ -1,0 +1,116 @@
+{
+  "parameters": [
+    {
+      "name": "iterations",
+      "type": "integer",
+      "flag": "-i",
+      "default": 125,
+      "lower": 50,
+      "upper": 200
+    },
+    {
+      "name": "samples",
+      "type": "integer",
+      "flag": "-s",
+      "default": 5,
+      "lower": 1,
+      "upper": 10
+    },
+    {
+      "name": "mean1",
+      "type": "real",
+      "flag": "-m1",
+      "default": 0,
+      "lower": -1,
+      "upper": 1
+    },
+    {
+      "name": "std1",
+      "type": "real",
+      "flag": "-s1",
+      "default": 1,
+      "lower": 0.01,
+      "upper": 2
+    },
+    {
+      "name": "mean2",
+      "type": "real",
+      "flag": "-m2",
+      "default": 0,
+      "lower": -1,
+      "upper": 1
+    },
+    {
+      "name": "std2",
+      "type": "real",
+      "flag": "-s2",
+      "default": 1,
+      "lower": 0.01,
+      "upper": 2
+    },
+    {
+      "name": "mean3",
+      "type": "real",
+      "flag": "-m3",
+      "default": 0,
+      "lower": -1,
+      "upper": 1
+    },
+    {
+      "name": "std3",
+      "type": "real",
+      "flag": "-s3",
+      "default": 1,
+      "lower": 0.01,
+      "upper": 2
+    },
+    {
+      "name": "mean4",
+      "type": "real",
+      "flag": "-m4",
+      "default": 0,
+      "lower": -1,
+      "upper": 1
+    },
+    {
+      "name": "std4",
+      "type": "real",
+      "flag": "-s4",
+      "default": 1,
+      "lower": 0.01,
+      "upper": 2
+    },
+    {
+      "name": "mean5",
+      "type": "real",
+      "flag": "-m5",
+      "default": 0,
+      "lower": -1,
+      "upper": 1
+    },
+    {
+      "name": "std5",
+      "type": "real",
+      "flag": "-s5",
+      "default": 1,
+      "lower": 0.01,
+      "upper": 2
+    },
+    {
+      "name": "greedy",
+      "type": "categorical",
+      "flag": "-g",
+      "default": "True",
+      "options": [
+        "True",
+        "False"
+      ]
+    }
+  ],
+  "constraints": [
+    "$mean1 != $mean2",
+    "$std5*$mean4 <= $mean3 and $std4 > 0.1",
+    "($std3 + ($mean2*$mean2))/1.25 >= 1",
+    "($std3 + ($mean2*$mean2))/1.25 <= 5"
+  ]
+}
