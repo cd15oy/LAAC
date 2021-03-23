@@ -16,8 +16,9 @@ You should have received a copy of the GNU Lesser General Public License
 along with this program.  If not, see <https://www.gnu.org/licenses/>.
 """
 
+from test.initializer import getConfigDef
 import unittest
-from Configurator.ConfigurationDefinition import ConfigurationDefinition, Constraint, Real, Integer, Categorical, ConcreteParameter, Configuration, MissingParameterError
+from Configurator.ConfigurationDefinition import Real, Integer, Categorical, ConcreteParameter, Configuration, MissingParameterError
 
 """
 Sanity checks for ConfigurationDefinition, Configuration, and the supporting classes 
@@ -28,12 +29,8 @@ Everything contained in ConfigurationDefinition.py and Configuration.py
 class TestConfigurations(unittest.TestCase):
 
     def setUp(self):
-        from parameters import write
-        write()
-        import json 
-        with open("optFiles/parameters.json", 'r') as inF:
-            self.confDefs = json.loads(inF.read())
-        self.configurationDefinition = ConfigurationDefinition(self.confDefs) 
+        self.confDefs,self.configurationDefinition = getConfigDef()
+        
 
     def tearDown(self):
         pass
