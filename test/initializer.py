@@ -6,7 +6,6 @@ from Configurator.ConfigurationDB import ConfigurationDB
 from typing import Tuple
 from Configurator.ConfigurationDefinition import Configuration, ConfigurationDefinition
 from Configurator.ProblemSuite import ProblemSuite
-from copy import deepcopy
 
 def getProblemSuite(seed:int) -> Tuple[dict,ProblemSuite]:
     import json 
