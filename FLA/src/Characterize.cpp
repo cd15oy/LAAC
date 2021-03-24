@@ -110,7 +110,7 @@ void characterize_cpp(double ** solutions, double * quality, double *** state, d
         delete[] ret;
 
         ret = ydist.calculate(*S);
-        for(int i = 0; i < 2; i++) {
+        for(int i = 0; i < ydist.lenOut(); i++) {
             characteristics.yDist[i] = ret[i];
             //std::cout << ret[i] << " "; 
         }
@@ -118,7 +118,7 @@ void characterize_cpp(double ** solutions, double * quality, double *** state, d
         delete[] ret;
         
         ret = pairwise.calculate(*S);
-        for(int i = 0; i < 54; i++) {
+        for(int i = 0; i < pairwise.lenOut(); i++) {
             characteristics.pairwise[i] = ret[i];
             //std::cout << ret[i] << " "; 
         }
@@ -131,7 +131,7 @@ void characterize_cpp(double ** solutions, double * quality, double *** state, d
         delete[] ret; 
 
         ret = grad.calculate(*S);
-        for(int i = 0; i < 7; i++) {
+        for(int i = 0; i < grad.lenOut(); i++) {
             characteristics.grad[i] = ret[i];
             //std::cout << ret[i] << " "; 
         }
@@ -139,7 +139,7 @@ void characterize_cpp(double ** solutions, double * quality, double *** state, d
         delete[] ret;
 
         ret = m.calculate(*S);
-        for(int i = 0; i < 2; i++) {
+        for(int i = 0; i < m.lenOut(); i++) {
             characteristics.M[i] = ret[i];
             //std::cout << ret[i] << " "; 
         }
@@ -147,30 +147,30 @@ void characterize_cpp(double ** solutions, double * quality, double *** state, d
         delete[] ret;
     
         ret = stag.calculate(*S);
-        for(int i = 0; i < 2; i++) {
+        for(int i = 0; i < stag.lenOut(); i++) {
             characteristics.stag[i] = ret[i];
             //std::cout << ret[i] << " "; 
         }
         //std::cout << "\n";
         delete[] ret;
 
-        //May throw an error if no state is provided, the python code should do its own checking too
+        //TODO: May throw an error if no state is provided, the python code should do its own checking too
         try {
             ret = diversity.calculate(*S);
-            for(int i = 0; i < numSolutions; i++) {
+            for(int i = 0; i < diversity.lenOut(); i++) {
                 characteristics.diversity[i] = ret[i];
                 //std::cout << ret[i] << " ";
             }
             //std::cout << "\n";
             delete[] ret; 
         } catch (const char * c) {
-            for(int i = 0; i < numSolutions; i++) 
+            for(int i = 0; i < diversity.lenOut(); i++) 
                 characteristics.diversity[i] = 0;
         }
         
 
         ret = gbeststep.calculate(*S);
-        for(int i = 0; i < numSolutions; i++){
+        for(int i = 0; i < gbeststep.lenOut(); i++){
             characteristics.gBestStep[i] = ret[i];
             //std::cout << ret[i] << " ";
         }
@@ -178,7 +178,7 @@ void characterize_cpp(double ** solutions, double * quality, double *** state, d
         delete[] ret; 
 
         ret = gbeststag.calculate(*S);
-        for(int i = 0; i < 2*dims; i++) {
+        for(int i = 0; i < gbeststag.lenOut(); i++) {
             characteristics.gBestStag[i] = ret[i];
             //std::cout << ret[i] << " ";
         }
@@ -186,7 +186,7 @@ void characterize_cpp(double ** solutions, double * quality, double *** state, d
         delete[] ret; 
 
         ret = gbestydist.calculate(*S);
-        for(int i = 0; i < 2*dims; i++) {
+        for(int i = 0; i < gbestydist.lenOut(); i++) {
             characteristics.gBestyDist[i] = ret[i];
             //std::cout << ret[i] << " ";
         }
