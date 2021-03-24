@@ -81,12 +81,6 @@ class Runner:
                 threadPool[nxt].start() 
 
         return [x[0] for x in ret] 
-
-        # ret = [] 
-        # for x in todo:
-        #     v = self.algorithm.run(*x)
-        #     ret.append(v)
-        # return ret
  
     def close(self) -> None:
         self.workers.close()
