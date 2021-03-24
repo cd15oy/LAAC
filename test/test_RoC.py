@@ -28,25 +28,25 @@ Sanity checks for RoC
 class TestRoC(unittest.TestCase):
 
     def setUp(self):
-        self.seed = 12345 
+        self.seed = 12345
         self.rng = Random(self.seed)
 
     def tearDown(self):
         pass
 
     def testOutput(self):
-        vals = [self.rng.random()*x for x in range(1000)] 
+        for i in range(100):
+            vals = [(1000-x) + self.rng.random() for x in range(1000)] 
 
-        out1 = fit(vals)
-        out2 = fit(vals)
+            out1 = fit(vals)
+            out2 = fit(vals)
 
-        for x,y in zip(out1,out2):
-            self.assertEqual(x,y, "Values should be the same for the same inputs.") 
+            for x,y in zip(out1,out2):
+                self.assertEqual(x,y, "Values should be the same for the same inputs.") 
 
-        vals2 = [self.rng.random()*x*2 for x in range(1000)] 
+            vals2 = [(1000-x)*10 + (self.rng.random()) for x in range(1000)] 
 
-        out3 = fit(vals2) 
-
-        self.assertTrue(out3[0] > out1[0], "Second sequence should have a larger rate of change.")
+            out3 = fit(vals2) 
+            self.assertTrue(out3[0] < out1[0], "Second sequence should have a more negative rate of change.")
 
   
