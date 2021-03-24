@@ -27,8 +27,6 @@ from math import isfinite
 from random import Random,seed as setPythonSeed
 import os
 
-#TODO: all testing
-
 """ 
 This class defines a method for selecting the "next" configuration to be used with the algorithm
 """
@@ -63,7 +61,6 @@ class Model:
         raise NotImplementedError
 
 #purely random configuration sampling
-#TODO: tests
 class LatinHyperCube(Model):
     def __init__(self, bufferSize:int, configDef:ConfigurationDefinition, seed:int):
         super(LatinHyperCube, self).__init__() 
@@ -129,7 +126,6 @@ class LatinHyperCube(Model):
 
         return vals 
 
-#TODO: tests
 class _NeuralNetworkModel(torch.nn.Module):
     def __init__(self, inputSize:int, configDef:ConfigurationDefinition, cpu:bool=False):
         super(_NeuralNetworkModel, self).__init__()
@@ -177,7 +173,6 @@ class _NeuralNetworkModel(torch.nn.Module):
         
         return out
 
-#TODO: tests
 class NeuralNetwork(Model):
     def __init__(self, inputSize:int, configDef:ConfigurationDefinition, seed:int, cpu:bool=False):
         super(NeuralNetwork, self).__init__() 
