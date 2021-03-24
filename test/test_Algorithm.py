@@ -20,6 +20,7 @@ import json
 from json.decoder import JSONDecodeError
 from math import isfinite
 from subprocess import PIPE, Popen
+from test.helper import compareFeatures
 from Configurator.ConfigurationGenerator import RandomGenerator
 from Configurator.TerminationCondition import FELimit
 from Configurator.ConfigurationDefinition import Configuration
@@ -94,12 +95,7 @@ class TestAlgorithm(unittest.TestCase):
 
             features = self.characterizer.characterize(result, conf.characterizeSeed)
 
-            for i,(v1,v2) in enumerate(zip(conf.features,features)):
-                if not isfinite(v1):
-                    v1 = 0
-                if not isfinite(v2):
-                    v2 = 0
-                self.assertEqual(v1,v2, "Feature {} should be the same.")
+            compareFeatures(self, conf.features, features)
 
             for i,(sol1,sol2) in enumerate(zip(conf.rawResult["solutions"],result["solutions"])):
                 for j,(v1,v2) in enumerate(zip(sol1["solution"], sol2["solution"])):

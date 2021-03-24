@@ -16,6 +16,7 @@ You should have received a copy of the GNU Lesser General Public License
 along with this program.  If not, see <https://www.gnu.org/licenses/>.
 """
 
+from test.helper import compareFeatures
 import unittest
 from random import Random
 
@@ -40,19 +41,21 @@ class TestCharacterizer(unittest.TestCase):
         pass
 
     def testOutput(self):
-        result = dict() 
-        result["solutions"] = [self.rndSol() for x in range(250)]
+        for i in range(100):
+            result = dict() 
+            result["solutions"] = [self.rndSol() for x in range(50)]
 
-        result["state"] = [
-                [self.rndSol() for x in range(50)] for y in range(250)
-            ]
-                
-        #One of our landscape measures used in Characterize (the Pairwise class) uses multiple random samples of the solutions provided to estimate it's value. The measure is based on the pairwise distance between solutions, but obviously that gets expensive very quickly. We re-initialize the Characterizer here so the random samples will be the same in the first and second call, so the estimated values will be the same
+            result["state"] = [
+                    [self.rndSol() for x in range(50)] for y in range(50)
+                ]
+                    
+            #One of our landscape measures used in Characterize (the Pairwise class) uses multiple random samples of the solutions provided to estimate it's value. The measure is based on the pairwise distance between solutions, but obviously that gets expensive very quickly. We re-initialize the Characterizer here so the random samples will be the same in the first and second call, so the estimated values will be the same
 
-        c = Characterizer() 
+            c = Characterizer() 
 
-        a = c.characterize(result,self.seed)
-        b = c.characterize(result,self.seed)
+            a = c.characterize(result,self.seed)
+            b = c.characterize(result,self.seed)
 
-        for i,(x,y) in enumerate(zip(a,b)):
-            self.assertEqual(x,y, "Characterizing the same solution twice should yield the same result. Element {} was different".format(i))
+            compareFeatures(self, a, b)
+
+            

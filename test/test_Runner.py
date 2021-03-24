@@ -17,6 +17,7 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 """
 
 from math import isnan
+from test.helper import compareFeatures
 from Configurator.ConfigurationGenerator import RandomGenerator
 from Configurator.Runner import RandomInstanceRunner
 from Configurator.Algorithm import Algorithm
@@ -69,8 +70,7 @@ class TestRunner(unittest.TestCase):
 
                 self.assertEqual(c1.valid, c2.valid, "Validity should be the same") 
 
-                for f1,f2 in zip(c1.features,c2.features):
-                    self.assertEqual(f1,f2, "Features should be the same") 
+                compareFeatures(self, c1.features, c2.features)
 
                 #run time is semi-random since it is a measure of real time consumed during running 
                 #we adjust results to make the run times match 
