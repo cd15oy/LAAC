@@ -1,4 +1,6 @@
 from random import Random
+
+import numpy as np
 from Configurator.Run import Run
 from Configurator.ConfigurationDB import ConfigurationDB
 from typing import Tuple
@@ -41,16 +43,34 @@ def getPopulatedConfigDB(seed:int) -> ConfigurationDB:
     
     conf = Configuration(configurationDefinition, vals)
 
-    result = {"solutions":[{"solution":None,"quality":None}]}
+    
 
     rng = Random(seed)
     runs = []
     for inst in instances:
         run = Run(inst)
-        c = conf.duplicateParams()
-        result["solutions"][-1]["quality"] = rng.random()
-        c.rawResult = deepcopy(result)
-        run.configurations.append(c) 
+
+        steps = rng.randint(1,10)
+
+        for step in range(steps):
+            c = conf.duplicateParams()
+            iters = rng.randint(10,50)
+            result =    {"solutions":
+                            [{  "solution":[rng.random() for d in range(30)],
+                                "quality":rng.random()} for s in range(iters)],
+                        "state": [
+                                [{  "solution":[rng.random() for d in range(30)],
+                                "quality":rng.random()} for s in range(10)] for j in range(iters)
+                            ],
+                        "evaluationsConsumed":iters*100,
+                        "algorithmState":"",
+                        "time":rng.randint(1000,10000)
+                        }
+
+            c.features = np.asarray([rng.random() for x in range(159)])
+            c.rawResult = result
+            run.configurations.append(c) 
+        
         runs.append(run)
         
     confDB = ConfigurationDB()
