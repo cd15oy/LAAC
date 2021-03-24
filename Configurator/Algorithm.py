@@ -32,7 +32,7 @@ import json
 from random import Random
 import threading
 
-#TODO: LAAC should have an "evaluate invalid configurations" option, if False, invalids get an impossibly bad quality, otherwise run them and get a quality
+#TODO: tests for evaluateInvalid = False 
 
 class Algorithm:
 
@@ -64,15 +64,15 @@ class Algorithm:
 
             #If the configuration is invalid, and LAAC should not evaluate invalid configs 
             if not conf.valid and not self.evaluateInvalid:
-                #TODO
+                #TODO need to update evaluator (and probably others) to handle dummy records, making decisions when invalid configurations are involved 
                 print("I shouldn't see this")
                 #construct a dummy record with None features, solutions, etc 
                 features = None  #no features 
                 result =    {
-                                "solutions":
-                                    [],
-                                "state":
-                                    [],
+                                "solutions":None,
+                                    #[{"solution":None,"quality":float('inf')}],
+                                "state":None,
+                                    #[[{"solution":None,"quality":float('inf')},{"solution":None,"quality":float('inf')},{"solution":None,"quality":float('inf')},{"solution":None,"quality":float('inf')},{"solution":None,"quality":float('inf')}]],
                                 "evaluationsConsumed":0,
                                 "algorithmState":restore,
                                 "time":0
