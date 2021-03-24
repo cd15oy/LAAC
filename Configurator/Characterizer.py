@@ -23,9 +23,8 @@ Responsible for producing a feature vector from a sequence of solutions.
 #TODO: it seems the c++ code does not always yield the same results for the same inputs 
 #probably an error in Chcaracterize.cpp or an interfacing issue of some kind
 
-from ctypes import POINTER, Structure, byref, c_long, cdll,c_double,c_int,c_long, pointer
+from ctypes import POINTER, Structure, byref, c_long, cdll,c_double,c_int,c_long
 import numpy as np 
-from random import Random
 from Configurator.RoC import fit 
 import sys 
 
@@ -103,7 +102,7 @@ class Characterizer:
 
         characteristics = Characteristics()
         characteristics.diversity = (c_double*numSolutions)() 
-        characteristics.gBestStep = (c_double*numSolutions)()
+        characteristics.gBestStep = (c_double*(numSolutions-1))()
         characteristics.gBestStag = (c_double*(dims*2))()
         characteristics.gBestyDist = (c_double*(dims*2))()
 
@@ -122,28 +121,25 @@ class Characterizer:
             # print([characteristics.gBestStag[x] for x in range(2*dims)])
             # print([characteristics.gBestyDist[x] for x in range(2*dims)])
             
-            #if you run python3 Configure.py -scenario optFiles/scenario.json -seed 12345 then characteristics.gBestStep contains a non-finite value 
-            #TODO ^^ figure it out
-
             #Construct a feature vector with the results 
-            out =   [[characteristics.FDC] + 
+            out =   [[characteristics.FDC] +
                     [x for x in characteristics.yDist] + 
                     [x for x in characteristics.pairwise] + 
                     [characteristics.FEM] +
                     [x for x in characteristics.grad] +
                     [x for x in characteristics.M] + 
                     [x for x in characteristics.stag] +
-                    [characteristics.diversity[-1]] + 
+                    [characteristics.diversity[numSolutions-1]] + 
                     fit([characteristics.diversity[x] for x in range(numSolutions)]) + 
-                    [characteristics.gBestStep[-1]] + 
-                    fit([characteristics.gBestStep[x] for x in range(numSolutions)]) +
+                    [characteristics.gBestStep[numSolutions-2]] + 
+                    fit([characteristics.gBestStep[x] for x in range(numSolutions-1)]) +
                     [characteristics.gBestStag[x] for x in range(2*dims)] +
                     [characteristics.gBestyDist[x] for x in range(2*dims)]
             ]
 
             out = np.asarray(out[0])
 
-            return out 
+            return out
 
         except:
             raise CharacterizerError("An error occurred during characterization")
