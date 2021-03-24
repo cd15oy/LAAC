@@ -120,7 +120,7 @@ class FEM : public FLM {
 
 class M : public FLM {
     private:
-        bool neutral(double * normalizedFit, int len, int ptr) {
+        bool neutral(double * normalizedFit, int ptr) {
             double threshold = 0.00000001; //This value taken from Malan and Engelbrecht
       
             double mx = normalizedFit[ptr];
@@ -155,7 +155,7 @@ class M : public FLM {
             //We want to count the longest sequence of neutral structures
             for(int i = 2; i < s.size(); i++) {
                 //if we see a neutral structure just continue
-                if(neutral(normalizedFit, s.size(), i)) {
+                if(neutral(normalizedFit, i)) {
                     neutralCount++;
                 } else {
                     //otherwise, check how long this sequence of neural structures was, and update our count if needed
@@ -553,17 +553,7 @@ class Pairwise: public FLM {
         }
 
         //note that we assume the points represented by the rows/cols of dists are ordered from most fit to least fit
-        double dispersion(double ** dists, int start, int end, double * stats) {
-            double aveDist = 0;
-            for(int i = start; i < end; i++)
-                for(int j = i+1; j < end; j++) 
-                    aveDist += dists[i][j];
-            int points = end-start;
-            return aveDist/((points*(points-1))/2.0);
-        }
-
-        //note that we assume the points represented by the rows/cols of dists are ordered from most fit to least fit
-        void dispersionFeatures(double ** dists, double * fits, int len, double stats[35]) {
+        void dispersionFeatures(double ** dists, int len, double stats[35]) {
             //we want to calculate dispersion for 5 sub-sets of the passed in points.
             //the sizes of these subsets will be evenly distributed among the possible sizes 
             int twentyPercent = (int)(0.2*len);
@@ -675,86 +665,6 @@ class Pairwise: public FLM {
             maxSampleSize=100;
         }
 
-        //slow version
-        // double * calculate(Sample &s) {
-
-        //     //We need to sort soltuions according to fitness, without changing the order of the sample
-        //     //std::map<double, Solution *> sorted; 
-        //     std::vector<std::pair<double, Solution *>> sorted;
-
-        //     for(int i = 0; i < s.size(); i++)
-        //         sorted.push_back(std::pair<double, Solution *>(s.get(i)->getFit(), s.get(i))); 
-
-        //     std::sort(sorted.begin(), sorted.end(), compare);
-
-
-        //     //For now we calculate pairwise distance between all solutions
-        //     //We'll need to find something cheaper for later
-        //     //maybe do the 15% best for dispersion, then 15% randomly distributed for nearest? 
-        //     //If you do dispersion first you can easily reuse points 
-
-        //     //Calculate nearest neighbor features over the whole set
-        //     double ** pairwiseDist = new double *[s.size()];
-        //     for(int i = 0; i < s.size(); i++)
-        //         pairwiseDist[i] = new double[s.size()];
-
-        //     for(int i = 0; i < s.size(); i++) {
-        //         pairwiseDist[i][i] = 0;
-        //         for(int j = i+1; j < s.size(); j++) {
-        //             pairwiseDist[i][j] = dist(sorted[i].second, sorted[j].second);
-        //             pairwiseDist[j][i] = pairwiseDist[i][j];
-        //         }
-        //     }
-
-        //     double fitnessValues[s.size()];
-        //     for(int i = 0; i < s.size(); i++)
-        //         fitnessValues[i] = sorted[i].first;
-
-        //     double nbStats[19];
-        //     nearestNeighborFeatures(pairwiseDist, fitnessValues, s.size(), nbStats);
-
-        //     //calculate dispersion features over the 0.15 % best
-        //     int numBest = (int)(0.15*s.size());
-
-        //     if(numBest <= 0) throw "Dispersion requires a larger sample";
-
-        //     double ** bestPointsDist = new double*[numBest];
-        //     for(int i = 0; i < numBest; i++)
-        //         bestPointsDist[i] = new double[numBest];
-
-        //     for(int i = 0; i < numBest; i++) {
-        //         bestPointsDist[i][i] = 0;
-        //         for(int j = i+1; j < numBest; j++) {
-        //             bestPointsDist[i][j] = pairwiseDist[i][j];
-        //             bestPointsDist[j][i] = bestPointsDist[i][j];
-        //         }
-        //     }
-        //     double bestFit[numBest];
-        //     for(int i = 0; i < numBest; i++)
-        //         bestFit[i] = fitnessValues[i];
-
-        //     double dispersionStats[35];
-        //     dispersionFeatures(bestPointsDist, bestFit, numBest, dispersionStats);
-
-        //     double * ret = new double[54];
-        //     for(int i = 0; i < 19; i++)
-        //         ret[i] = nbStats[i];
-
-        //     for(int i = 19; i < 54; i++)
-        //         ret[i] = dispersionStats[i-19];
-
-
-        //     for(int i = 0; i < s.size(); i++)
-        //         delete[] pairwiseDist[i];
-        //     delete[] pairwiseDist;
-        //     for(int i = 0; i < numBest; i++)
-        //         delete[] bestPointsDist[i];
-        //     delete[] bestPointsDist;
-
-        //     return ret;
-           
-        // } 
-
         double * calculate(Sample &s) {
 
             //We need to sort solutions according to fitness, without changing the order of the sample
@@ -784,12 +694,9 @@ class Pairwise: public FLM {
                     dispPointsDist[j][i] = dispPointsDist[i][j];
                 }
             }
-            double bestFit[numBest];
-            for(int i = 0; i < numBest; i++)
-                bestFit[i] = sorted[i].first;
 
             double dispersionStats[35];
-            dispersionFeatures(dispPointsDist, bestFit, numBest, dispersionStats);
+            dispersionFeatures(dispPointsDist, numBest, dispersionStats);
 
 
             //We get away with dispersion because we only need to do pairwise distance calculations for a small group of the best solutions
