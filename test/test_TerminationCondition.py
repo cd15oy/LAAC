@@ -30,7 +30,7 @@ Sanity checks for TerminationConditions
 """
 #TODO: can we really have too many tests?
 
-class TestCharacterizer(unittest.TestCase):
+class TestTerminationCondition(unittest.TestCase):
 
 
     def setUp(self):
