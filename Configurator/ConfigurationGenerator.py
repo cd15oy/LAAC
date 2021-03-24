@@ -21,7 +21,6 @@ from Configurator.ConfigurationDefinition import ConfigurationDefinition,Configu
 from Configurator.Model import LatinHyperCube, NeuralNetwork
 from numpy import ndarray
 
-#TODO: all testing
 
 #TODO: the method signatures here will likely change as we flesh out the system 
 #ideally we want the Configuration generator to handle decisions about which underlying model to use
