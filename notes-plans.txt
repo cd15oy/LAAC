@@ -265,92 +265,201 @@ Component Description:
 
 
 Parameters/Variables to consider and test 
-    The treatment of problems and problem instances during data collection 
-        ie infinite instances through seeds vs testing over finite instances to reduce variance 
-
-    Config/config sequence evaluation 
-        ie fixed # of runs with average/median vs racing vs something new? 
-
-    Random sampling vs random sampling from the stable region
-
-    balance between predicted configs and randomly sampled configs in tested configurations 
-        two possible extremes, exclusively evaluate randomly sampled configs, exclusively evaluate predicted configs 
-        both would suck 
-            so the questions is what proportion of each should be evaluated 
-            and should those proportions change over time? 
-        some options 
-            static split 
-            shift from only random to only predicted uniformly through run 
-                or from only random to ex 5% random by end
-
-    balance between predicted configs and randomly sampled configs in the training data 
-        do we need to pay attention of whether or not a config was predicted or randomly sampled when producing training data 
-        should we force the addition of randoms to encourage diversity? 
 
     How should config generation/evaluation, network training, dataset updating, etc change as the run goes on 
-
-    NN architecture
-    NN training parameters 
 
     Effects of/Relationship between 
         runs/configs per iteration vs total iterations performed 
 
-    "seed" a run with initial configs from previous good sequences vs "seed" the run with random configs vs "seed" the run with configs believed to be generally good 
+    balance between predicted configs and randomly sampled configs in tested configurations 
+        Description
+            two possible extremes, exclusively evaluate randomly sampled configs, exclusively evaluate predicted configs 
+            both would suck 
+                so the questions is what proportion of each should be evaluated 
+                and should those proportions change over time? 
+            some options 
+                static split 
+                shift from only random to only predicted uniformly through run 
+                    or from only random to ex 5% random by end
+        Priority 
+            High 
+        Current Action 
+            The generator should randomly choose between random generation and non-random generation
+            configurations should be tagged as randomly generated or non-randomly generated 
+                the appoximate proportion of random generation to nonrandom generation can be chosen based on the proportions seen in the desirable 
+                but it should vary within some range to avoid overtunning/locals
 
-    how to handle "bad" configurations 
-        ie what to do when the model produces configurations which fail a constraint 
+    How to select initial config in a run 
+        Description
+            "seed" a run with initial configs from previous good sequences vs "seed" the run with random configs vs "seed" the run with configs believed to be generally good 
 
-    how to "end" a run 
-        continue until max FEs met?
-        end when stagnation detected?
-            how to define stagnation 
-        train the model to prefer "low" limits when minimal/no improvement is expected
-            then end the run when the models predictions are "low" or the max is met?
+            Currently Runner is responsible for generating a group of configs and running/evaluating each, using the model to update algorithm params throughout the run 
+                where we expect the model to take landscape features from the previous step, and predict parameters for the next step 
+                this leaves no obvious way to get the initial parameters other than random sampling 
+                    perhaps with a small number of initial FEs to collect just enough data for the model to predict on 
+                Unfortunately we can expect that the initial config will be highly influential on final performance 
+                    PSO particles often are very chaotic in early iterations
+                So random initial configs may not be ideal 
+            Proposed experiment 
+                train a secondary model to predict configurations which "should have" come before the currently observed features 
+                    ie use good runs to train the model on backward predictions 
+            Then test 
+                if repeating a run with the backwards predicted initial config improves final performance 
+                NEED TO KNOW if the performance improvement is also present on initially good runs, or only bad runs 
+                    if also present on initially good runs, could apply this in later stages to improve upon existing good config sequences 
+                    or might simply generate random configs, run for 1 step, then backwards predict to obtain better starting points 
+        Priority 
+            High 
+        Current Action
+            When the generator determines non-random generation, and is being asked to produce a config without provided features 
+            the generator should produce the initial config from a desirable run 
 
-    how to define "local" features 
-        only the solutions produced by a particular configuration?
-        the n most recent solutions?
+    Network Training 
+        Description
+            NN architecture
+            NN training parameters 
+                lr, momentum, batch size, epochs, etc 
+                stopping criteria 
+            It may be acceptable to have things like architecture, lr, batch size, and momentum static
+            but how many epochs/how many batches to train on almost certainly cannot be static 
+                need to avoid over fitting and preserve generalization/validation performance 
+            It is possible that at some point during the run of LAAC the model with reach a point where it's sufficiently trained 
+                and our best option is to just keep doing runs/sampling more configs 
+            At such a point further training, wouldn't help, and might hurt 
+        Priority
+            High
+        Current Action
+            TBD
+        Thoughts
+            We will have a static training protocol, ie generate n many examples from the desirables, and train for m many epochs 
+            this protocol may be followed or skipped at each iteration of LAAC 
+            the decision on whether to follow or skip the protocol will be based on the performance of "non random" runs from the previous iteration 
+                by our design LAAC will randomly choose between random sampling and the model for config generation, according to some proportion 
+                    where the proportion varries over time 
+                we hope that less random runs will perform better than more random runs 
+                    ie that using the models predictions more often in a run correlates with improved performance 
+            if at the previous iteration using the model more did not correlate to better performance this could indicate more training needed 
 
-    Currently Runner is responsible for generating a group of configs and running/evaluating each, using the model to update algorithm params throughout the run 
-        where we expect the model to take landscape features from the previous step, and predict parameters for the next step 
-        this leaves no obvious way to get the initial parameters other than random sampling 
-            perhaps with a small number of initial FEs to collect just enough data for the model to predict on 
-        Unfortunately we can expect that the initial config will be highly influential on final performance 
-            PSO particles often are very chaotic in early iterations
-        So random initial configs may not be ideal 
-    Proposed experiment 
-        train a secondary model to predict configurations which "should have" come before the currently observed features 
-            ie use good runs to train the model on backward predictions 
-    Then test 
-        if repeating a run with the backwards predicted initial config improves final performance 
-        NEED TO KNOW if the performance improvement is also present on initially good runs, or only bad runs 
-            if also present on initially good runs, could apply this in later stages to improve upon existing good config sequences 
-            or might simply generate random configs, run for 1 step, then backwards predict to obtain better starting points 
+            we can also examing the performance of "seeded" runs over time
+                we expect the model to get better as time goes on 
+            so, since we expect that the model got better, we would expect that seeding a run with an initial config from the desirables would lead to performance which is at least as good, hopefully better, than the previous runs which began on that config 
+                if we observe this trend, then eventually performance stagnates, or drops on newer runs, this might be an indication of overfitting
 
-    Effect of different sols/particles as the search/walk vector 
-        ex using gBest of each iteration vs best current position of each iteration vs a single randomly chosen particle vs the current positions of the particle which produced gBest at the end
-
-    effects of rerunning configs vs sampling new configs 
-        there is likely a relationship between the size of a sample of configurations and the number of runs per configuration required to detect significant differences in quality 
-            early in the the run of LAAC, it probably isn't worth the effort to re-run configs
-            since its quite possible for a small to medium sample of configs to simply contain many configs with similar quality 
-        in such a case simply sampling more configs may be more effective at producing diferences in quality in the dataset 
-        Alternatively, maybe re-running early will allow us to filter bad configs out of the desirable data more quickly, and lead to improvements in the model 
-
-        the two extremes are 
-            no reruns -> do only the minimum runs for each config, and focus on the ones which appear desirable 
-            rerun desirable configs at the earliest opportunity until the upper runs limit is met 
-
-            one adaptive option 
-                choose the proportion of newconfigs vs reruns based on the iteration of LAAC
+            another option 
+                we could decrease the amount of training based on how common predicted params are among the desirables 
+                ie, the the data is 95% model outputs anyway, and our performance is holding steady, training is probably done until we find new data
 
     definition of desirable 
-        statically use best x percent 
-        vs 
-        not statistically significantly worse than xth quartile 
-        
-        in either case x could be adjusted dynamically 
+        Description
+            statically use best x percent 
+            vs 
+            not statistically significantly worse than xth quartile 
+            
+            in either case x could be adjusted dynamically 
 
+            Config/config sequence evaluation 
+                ie fixed # of runs with average/median vs racing vs something new? 
+
+            its possible we define x to be the top 25%, but really, the top 50% are not significantly different, ie maybe the top 50% actually defines an appropriate distribution of values for the params 
+                so even though significance testing will lead to some false positives/negatives and noise, overall it may lead to higher quality/more complete data 
+
+        Priority
+            Medium to high 
+        Current Action
+            We currently statically define desirable based on the xth quartile 
+            We need to implement simple significance testing between the candidate and our desirable configs (or a representative of them, maybe the median desirable config?)
+
+    Re-Running vs Sampling new options
+        Description
+            effects of rerunning configs vs sampling new configs 
+                there is likely a relationship between the size of a sample of configurations and the number of runs per configuration required to detect significant differences in quality 
+                    early in the the run of LAAC, it probably isn't worth the effort to re-run configs
+                    since its quite possible for a small to medium sample of configs to simply contain many configs with similar quality 
+                in such a case simply sampling more configs may be more effective at producing diferences in quality in the dataset 
+                Alternatively, maybe re-running early will allow us to filter bad configs out of the desirable data more quickly, and lead to improvements in the model 
+
+                the two extremes are 
+                    no reruns -> do only the minimum runs for each config, and focus on the ones which appear desirable 
+                    rerun desirable configs at the earliest opportunity until the upper runs limit is met 
+
+                    one adaptive option 
+                        choose the proportion of newconfigs vs reruns based on the iteration of LAAC
+
+                The treatment of problems and problem instances during data collection 
+                ie infinite instances through seeds vs testing over finite instances to reduce variance 
+        Priority
+            Medium/Cancelled out 
+        Current Action 
+            We originally considered re-running and entire sequence of configurations, but with different algorithm seeds, but this no longer makes sense 
+            calculated landscape features depend directly on the sequence of solutions generated, and the prediction depends directly on the calculated features
+            SO if we used different run seeds our predictor is likely to produce a different series of configurations, which hopefully are more suited to the landscape we encounter based on the run seeds used 
+                basically, our predicted paramters are targetted at the specific seeds uses in the run of the algorithm, changing the seeds is likely to lead to a different sequence of configs anyway, so re-running a sequence doesn't really tell us much 
+            At the end of the day, the output of LAAC isn't a sequence of configs to be used for random instances of the problem 
+            its a solution, and possible a trained model which can be used with new instances of the problem 
+            
+            No action to take at this time, this is covered by "How to select initial config in a run"
+    
+
+    Randomly sampled examples vs Informed Predictions in training data 
+        Description
+            balance between predicted configs and randomly sampled configs in the training data 
+                do we need to pay attention of whether or not a config was predicted or randomly sampled when producing training data 
+                should we force the addition of randoms to encourage diversity? 
+            Basically, should the network be trained on its own predictions? 
+                including those that were good is probably fine, since "forgetting" is possible 
+            Though diversity in the data will matter 
+        Priority 
+            Medium 
+        Current Action 
+            Train on a random sample from those runs/configs which are flagged as desirable 
+            This can be re-evaluated later if the network seems to get stuck early or seems to be getting over-tuned 
+    
+    how to "end" a run 
+        Description
+            continue until max FEs met?
+            end when stagnation detected?
+                how to define stagnation 
+            train the model to prefer "low" limits when minimal/no improvement is expected
+                then end the run when the models predictions are "low" or the max is met?
+            Basically this comes down to the issue:
+                we know that early performance is not a strong indicator of later performance
+                but we'd also like to kill a run as early as possible IF it is going to under perform so we can preserve FEs/time 
+        Priority
+            Medium 
+        Current Action 
+            Let runs continue until the limit is met
+                This is the safest option for now, it means we won't prematurely cancel runs  
+                Any criteria designed for early termination will likely rely on runnung a collection of full length runs first 
+
+    Effect of different sols/particles as the search/walk vector 
+        Description
+            ex using gBest of each iteration vs best current position of each iteration vs a single randomly chosen particle vs the current positions of the particle which produced gBest at the end
+            
+            how to define "local" features 
+                only the solutions produced by a particular configuration?
+                the n most recent solutions?
+        Priority
+            Medium
+        Current Action 
+            No modifications to LAAC, this could be investigated by varying the output of the target algorithm
+
+    Sampling Region
+        Description    
+            Random sampling vs random sampling from the stable region
+        Priority
+            Low
+        Current Action
+            Restrict random sampling to the stable region 
+                if we have time we can compare against pure random sampling, but it's not a priority, plenty of works exist to indicate that stable parameters can be expected to be superior 
+
+    how to handle "bad" configurations 
+        Description
+            ie what to do when the model produces configurations which fail a constraint 
+        Priority
+            Low 
+        Current Action 
+            Nothing, when constraints are enforced, we identify them as 'bad', don't run them, and just predict again for new valid configs 
+            
 PseudoCode:
     REQUIRE
         configsPerIteration 

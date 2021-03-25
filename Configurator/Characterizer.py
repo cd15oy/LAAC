@@ -20,8 +20,7 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 Responsible for producing a feature vector from a sequence of solutions.
 """
 
-#TODO: it seems the c++ code does not always yield the same results for the same inputs 
-#probably an error in Chcaracterize.cpp or an interfacing issue of some kind
+#TODO: add quality RoC, and other quality based features?
 
 from ctypes import POINTER, Structure, byref, c_long, cdll,c_double,c_int,c_long
 import numpy as np 
