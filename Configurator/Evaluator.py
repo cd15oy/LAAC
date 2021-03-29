@@ -41,6 +41,7 @@ class SimpleEvaluator(Evaluator):
         self.maxRunsPerConfig = maxRunsPerConfig
 
     def evaluate(self, configDB:ConfigurationDB) -> None :
+        #TODO: need to prune clearly bad configs
         self._topX(configDB, self.x) 
 
         if self.reRun:

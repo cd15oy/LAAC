@@ -74,6 +74,8 @@ class Runner:
             out.append(alg(*args))
 
         threadPool = [Process(target=_algWrapper, args=(self.algorithm.run, x, ret[i])) for i,x in enumerate(todo)]
+
+        #TODO: polling instead of blocking, if thread x takes longer than threads x+1 to x+n we waste tons of CPU time here 
         for x in range(self.threads):
             threadPool[x].start() 
         for x in range(len(threadPool)):
