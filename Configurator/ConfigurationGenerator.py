@@ -159,16 +159,16 @@ class AdaptiveGenerator(ConfigurationGenerator):
         if self._informedPercentRnd < self.minInformedPercent:
             self._informedPercentRnd = self.minInformedPercent
 
-    #LatinHyperCube is used when no features are provided, since we have nothing to base feature selection on 
-    def _generateWithoutFeatures(self) -> Tuple[str,dict]:
-        #TODO: This should also alternate between random and "informed" selections 
-        #"informed" selections should be initial configs which previously performed well 
+    def _trackPredictionsMade(self):
         self._predictions += 1 
 
         if self._predictions == self.period:
             self._predictions = 0 
             self._chooseNewInformedPercentRnd()
 
+    #LatinHyperCube is used when no features are provided, since we have nothing to base feature selection on 
+    def _generateWithoutFeatures(self) -> Tuple[str,dict]:
+        
         if len(self._starterConfigs) > 0 and self.rng.random() < self._informedPercentRnd:
             return "Informed", self.rng.choice(self._starterConfigs)
         else:
@@ -177,16 +177,29 @@ class AdaptiveGenerator(ConfigurationGenerator):
     #Here we adaptively choose between random sampling, and informed prediction 
     #The main goal is to strike a balance between exploration of the parameter space, and exploitation of the trained models knowledge to improve performance
     def _generateWithFeatures(self, features:ndarray=None) -> Tuple[str,dict]:
-        self._predictions += 1 
-
-        if self._predictions == self.period:
-            self._predictions = 0 
-            self._chooseNewInformedPercentRnd()
 
         if self.rng.random() < self._informedPercentRnd:
             return "Informed", self.nn.generate(features) 
         else:
             return "Random", self.rndModel.generate(None)
+
+    #Testing to see if we can use the RandomGenerator and torch at the same time despite the GIL
+    def generate(self, features:ndarray= None) -> Configuration:
+
+        #Only perform locking at this level for the state of this class 
+        with self.lock:
+            self._trackPredictionsMade() 
+
+        #locking is performed at the model level as well to protect model state
+        if features is None:
+            method,conf = self._generateWithoutFeatures() 
+        else:
+            method,conf = self._generateWithFeatures(features)
+
+        config = Configuration(self.confDef, conf)
+        config.generationMethod = method
+
+        return config
 
     #Train the model, update informedPercent and period 
     def _update(self, confDB:ConfigurationDB) -> None:
