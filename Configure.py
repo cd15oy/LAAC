@@ -24,7 +24,7 @@ from Configurator.ConfigurationDB import ConfigurationDB
 from Configurator.Run import Run
 from Configurator.Runner import RandomInstanceRunner
 from Configurator.Characterizer import Characterizer
-from Configurator.ConfigurationGenerator import NNBackedGenerator, RandomGenerator
+from Configurator.ConfigurationGenerator import AdaptiveGenerator, NNBackedGenerator, RandomGenerator
 from Configurator.ProblemSuite import ProblemSuite
 from Configurator.ConfigurationDefinition import ConfigurationDefinition
 from Configurator.Algorithm import Algorithm
@@ -88,16 +88,14 @@ if __name__ == "__main__":
     suite = ProblemSuite(problems, rng.randint(0,4000000000)) 
 
     characterizer = Characterizer()
+    
 
+    model = AdaptiveGenerator(159, configurationDefinition, seed=rng.randint(0,4000000000))
     #TODO: figre out how Configure should be made aware of the problem dimensionality 
     #also, what about configuring for problems of different dimensionality simutaneously?
-    model = NNBackedGenerator(159, configurationDefinition, rng.randint(0,4000000000), cpu=True)
+    #model = NNBackedGenerator(159, configurationDefinition, rng.randint(0,4000000000), cpu=True)
     #model = RandomGenerator(configurationDefinition, rng.randint(0,4000000000))
-
-    #TODO: if you run python3 Configure.py -scenario optFiles/scenario.json -seed 12345 you'll get a json decoding error eventually
-    #find it and fix it
-
-
+    
     runner = RandomInstanceRunner(suite, characterizer, termination, rng.randint(0,4000000000), alg, scenario["threads"]) 
 
     configDB = ConfigurationDB() 

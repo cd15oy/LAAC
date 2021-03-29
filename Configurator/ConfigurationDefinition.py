@@ -220,6 +220,8 @@ class Configuration:
     #configDef should be a ConfigurationDefinition object, initialized from the user provided JSON
     #values should be a dictionary define the value for each parameter. The keys should be the parameter names .
     def __init__(self, configDef: ConfigurationDefinition, values: dict):
+
+        self._origDict = values
         
         #the configuration definition acts like a specification, it is used to validate instances of Configuration 
         self.configurationDefinition = configDef
@@ -247,6 +249,7 @@ class Configuration:
         self.seed = None #Note this is the algorithm seed, it is specific to this execution of the algorithm. This is not the instance seed (if it exists)
         self.threadID = None
         self.characterizeSeed = None #This is the seed passed to characterize when generating the feature vector of this execution of the algorithm
+        self.generationMethod = None #A string representing the method used to generate this configuration 
 
     #Produces a string of command line arguments which can be passed on to Algorithm
     def toFlags(self) -> str:

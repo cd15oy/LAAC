@@ -27,6 +27,8 @@ from math import isfinite
 from random import Random,seed as setPythonSeed
 import os
 
+
+#TODO: remove model level locking, its moved up to  the config generator
 """ 
 This class defines a method for selecting the "next" configuration to be used with the algorithm
 """
@@ -127,7 +129,7 @@ class LatinHyperCube(Model):
         return vals 
 
 class _NeuralNetworkModel(torch.nn.Module):
-    def __init__(self, inputSize:int, configDef:ConfigurationDefinition, cpu:bool=False):
+    def __init__(self, inputSize:int, configDef:ConfigurationDefinition, cpu:bool=True):
         super(_NeuralNetworkModel, self).__init__()
     
         #construct the network to train for regression 
@@ -138,12 +140,12 @@ class _NeuralNetworkModel(torch.nn.Module):
                         )
         
         self.features = torch.nn.Sequential(
-                            torch.nn.Linear(500, 500),
+                            torch.nn.Linear(500, 300),
                             torch.nn.Hardtanh(-1,1),
-                            # torch.nn.Linear(300, 300),
-                            # torch.nn.Hardtanh(-1,1),
-                            # torch.nn.Linear(300, 500),
-                            # torch.nn.Hardtanh(-1,1)
+                            torch.nn.Linear(300, 300),
+                            torch.nn.Hardtanh(-1,1),
+                            torch.nn.Linear(300, 500),
+                            torch.nn.Hardtanh(-1,1)
                         )
 
         #construct regressors (and possibly classifiers) for each parameter to predict
@@ -173,10 +175,12 @@ class _NeuralNetworkModel(torch.nn.Module):
         
         return out
 
+
 class NeuralNetwork(Model):
-    def __init__(self, inputSize:int, configDef:ConfigurationDefinition, seed:int, cpu:bool=False):
+    def __init__(self, inputSize:int, configDef:ConfigurationDefinition, seed:int, cpu:bool=True):
         super(NeuralNetwork, self).__init__() 
         self.rng = Random(seed) 
+        #TODO: enable GPU accelerated training
         #self.device = torch.device("cuda:0" if torch.cuda.is_available() and not cpu else "cpu")
         #A bunch of stuff to make sure pytorch is reproducible 
         #Commenting this out may improve performance in some cases 

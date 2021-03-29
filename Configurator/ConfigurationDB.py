@@ -20,7 +20,7 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 Stores the collection of configurations that have been tested. Organized by run, which allows us to know the sequence in which configs were used.
 """
 import time
-from typing import List
+from typing import Iterator, List
 from Configurator.Run import Run
 
 #TODO: finish fleshing out, need to store all configs and runs, flag un flag runs
@@ -56,6 +56,12 @@ class ConfigurationDB:
             for rcrd in self.records[prob]:
                 if self.records[prob][rcrd].reRun():
                     ret.append(rcrd[0])
+
+    #produces a generator which will iterate through all records in this ConfigurationDB 
+    def recordGenerator(self) -> Iterator["Record"]:
+        for prob in self.records:
+            for rcrd in self.records[prob]:
+                yield self.records[prob][rcrd] 
 
 
 """
