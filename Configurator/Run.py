@@ -36,7 +36,7 @@ class Run:
 
     #produces a unique identifier corresponding to the problem 
     def problem(self) -> int:
-        return self.instance.problem.toFlags().__hash__()
+        return self.instance.problem.__hash__()
 
     #produces a unique identifier corresponding to the initial configuration of the run 
     #subsequent configurations depend on the solutions sampled, the features produced, and the model, so they may change for different instances of the problem

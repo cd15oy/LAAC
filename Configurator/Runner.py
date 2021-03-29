@@ -18,8 +18,8 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 
 
-from threading import Thread
-from typing import List, Tuple
+#from threading import Thread
+from typing import Callable, List, Tuple
 from Configurator.Algorithm import Algorithm
 from Configurator.Problem import Instance
 from Configurator.TerminationCondition import TerminationCondition
@@ -29,6 +29,8 @@ from Configurator.ConfigurationGenerator import ConfigurationGenerator
 from random import Random
 from Configurator.Characterizer import Characterizer
 from Configurator.ProblemSuite import ProblemSuite
+
+from multiprocessing import Process
 
 """
 Runners are responsible for collecting runs of the target algorithm. This involves performing additional runs of existing configurations, as well as obtaining/running new configurations from the model. Runners are responsible for generatin the specific problem instances a configuration is evaluated on and ensuring the data we collect about a configuration provides a reliable description of the configuration.
@@ -51,7 +53,7 @@ class Runner:
         raise NotImplementedError
 
     #Performs numInstances runs each for numNewConfigs new configuration sequences and performance an additional run on a new instance for any runs in configsToReRun 
-    def schedule(self, numNewConfigs:int, numInstances:int, confSampler:ConfigurationGenerator, configsToReRun:List[Run] = None) -> List[Run]:
+    def schedule(self, manager, numNewConfigs:int, numInstances:int, confSampler:ConfigurationGenerator, configsToReRun:List[Run] = None) -> List[Run]:
         configs = [(numInstances, confSampler.generate()) for x in range(numNewConfigs)]
 
         reRun = None
@@ -60,7 +62,7 @@ class Runner:
 
         todo = self._generateInstances(configs, reRun) 
 
-        ret = [[] for x in range(len(todo))] 
+        ret = [manager.Array() for x in range(len(todo))] 
 
         todo = [(inst, conf, self.characterizer, confSampler, self.terminationCondition, self.rng.randint(0,4000000000)) for inst,conf in todo]
 
@@ -68,10 +70,10 @@ class Runner:
         #If we use it, torch throws a segfault, so we just make the threads manually 
 
         #A wrapper to capture the return value of alg
-        def _algWrapper(alg:callable, args:tuple, out:list):
+        def _algWrapper(alg:Callable, args:tuple, out:list):
             out.append(alg(*args))
 
-        threadPool = [Thread(target=_algWrapper, args=(self.algorithm.run, x, ret[i])) for i,x in enumerate(todo)]
+        threadPool = [Process(target=_algWrapper, args=(self.algorithm.run, x, ret[i])) for i,x in enumerate(todo)]
         for x in range(self.threads):
             threadPool[x].start() 
         for x in range(len(threadPool)):
@@ -80,7 +82,7 @@ class Runner:
             if nxt < len(threadPool):
                 threadPool[nxt].start() 
 
-        return [x[0] for x in ret] 
+        return [x.pop(0) for x in ret] 
  
     def close(self) -> None:
         self.workers.close()

@@ -61,11 +61,11 @@ class Problem:
 
 class Instance:
     def __init__(self, problem:Problem, instanceData:str):
-        self.problem = problem 
+        self.problem = problem.toFlags() 
         self.flags = instanceData 
 
     def toFlags(self)->str:
-        return "{0} {1}".format(self.problem.toFlags(), self.flags)
+        return "{0} {1}".format(self.problem, self.flags)
 
     def __hash__(self)->int:
         return self.toFlags().__hash__()

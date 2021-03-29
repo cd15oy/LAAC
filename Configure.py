@@ -33,6 +33,9 @@ import json
 import argparse
 from random import Random, randint
 from typing import List
+
+from multiprocessing.managers import BaseManager 
+
 #Counts the total FEs consumed by a list of runs 
 def countFEs(runs:List[Run]) -> int:
     total = 0 
@@ -77,7 +80,23 @@ if __name__ == "__main__":
     else:
         seed = scenario["seed"]
 
+    class CustomManager(BaseManager):
+        pass 
+
+    # CustomManager.register("Algorithm", Algorithm, exposed=["run"])
+    # CustomManager.register("FELimit", FELimit, exposed=["terminate"])
+    # CustomManager.register("ConfigurationDefinition", ConfigurationDefinition, exposed=["validate"])
+    # CustomManager.register("ProblemSuite", ProblemSuite, exposed=["generateN","sampleN"])
+    # CustomManager.register("Characterizer", Characterizer, exposed=["characterize"])
+    CustomManager.register("NNBackedGenerator", NNBackedGenerator, exposed=["update","generate"])
+    # CustomManager.register("ConfigurationDB", ConfigurationDB, exposed=["addRun","getReRuns"])
+    CustomManager.register("Array", list, exposed=["append", "pop"])
     rng = Random(seed)
+
+    manager = CustomManager()
+    manager.start() 
+
+
 
     alg = Algorithm(scenario["targetAlgorithm"], scenario["staticArgs"], scenario["strictConstraints"]==False) 
 
@@ -91,7 +110,7 @@ if __name__ == "__main__":
 
     #TODO: figre out how Configure should be made aware of the problem dimensionality 
     #also, what about configuring for problems of different dimensionality simutaneously?
-    model = NNBackedGenerator(159, configurationDefinition, rng.randint(0,4000000000), cpu=True)
+    model = manager.NNBackedGenerator(159, configurationDefinition, rng.randint(0,4000000000), cpu=True)
     #model = RandomGenerator(configurationDefinition, rng.randint(0,4000000000))
 
     #TODO: if you run python3 Configure.py -scenario optFiles/scenario.json -seed 12345 you'll get a json decoding error eventually
@@ -110,7 +129,7 @@ if __name__ == "__main__":
     configsPerIteration = scenario["configsPerIteration"] 
     minRunsPerConfig = scenario["minRunsPerConfig"]     
 
-    newRuns = runner.schedule(configsPerIteration, minRunsPerConfig, model) 
+    newRuns = runner.schedule(manager, configsPerIteration, minRunsPerConfig, model) 
     totalFEsConsumed = countFEs(newRuns)
 
 
@@ -132,7 +151,7 @@ if __name__ == "__main__":
 
         #TODO: limit the total runs per iteration, and/or the total new configs vs the total reuns? adapt the limits according to criteria or iteration?
         toReRun = configDB.getReRuns() 
-        newRuns = runner.schedule(configsPerIteration, minRunsPerConfig, model)
+        newRuns = runner.schedule(manager, configsPerIteration, minRunsPerConfig, model)
         totalFEsConsumed += countFEs(newRuns)
 
         for prob in configDB.records:
