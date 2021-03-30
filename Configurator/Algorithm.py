@@ -21,6 +21,7 @@ This class represents the target algorithm.
 """
 
 from json.decoder import JSONDecodeError
+import multiprocessing
 from Configurator.ConfigurationGenerator import ConfigurationGenerator
 from Configurator.ConfigurationDefinition import Configuration  
 from Configurator.Run import Run 
@@ -46,10 +47,8 @@ class Algorithm:
     #its possible that we will produce cases which stagnate for a while, then see improvement 
     #the specific conditions which indicate time to terminate will need to be adapted based on observation, and specific to different problems 
     #the initial condition will probably a total FE limit 
-    def run(self, instance: Instance, initialConfig: Configuration, characterizer: Characterizer, model: ConfigurationGenerator, terminationCondition: TerminationCondition, runSeed: int) -> Run:
+    def run(self, instance: Instance, initialConfig: Configuration, characterizer: Characterizer, model: ConfigurationGenerator, terminationCondition: TerminationCondition, runSeed: int, threadID:int) -> Run:
         
-        threadID = threading.get_ident()
-
         rng = Random(runSeed)
 
         #A Run is simply a list of configurations 

@@ -179,9 +179,11 @@ class AdaptiveGenerator(ConfigurationGenerator):
     def _generateWithFeatures(self, features:ndarray=None) -> Tuple[str,dict]:
 
         if self.rng.random() < self._informedPercentRnd:
-            return "Informed", self.nn.generate(features) 
+            r1,r2 = "Informed", self.nn.generate(features) 
+            return r1,r2
         else:
-            return "Random", self.rndModel.generate(None)
+            r1,r2 = "Random", self.rndModel.generate(None)
+            return r1,r2
 
     #Testing to see if we can use the RandomGenerator and torch at the same time despite the GIL
     def generate(self, features:ndarray= None) -> Configuration:
@@ -195,6 +197,7 @@ class AdaptiveGenerator(ConfigurationGenerator):
             method,conf = self._generateWithoutFeatures() 
         else:
             method,conf = self._generateWithFeatures(features)
+
 
         config = Configuration(self.confDef, conf)
         config.generationMethod = method

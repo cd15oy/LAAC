@@ -64,7 +64,7 @@ class Runner:
 
         ret = [manager.Array() for x in range(len(todo))] 
 
-        todo = [(inst, conf, self.characterizer, confSampler, self.terminationCondition, self.rng.randint(0,4000000000)) for inst,conf in todo]
+        todo = [(inst, conf, self.characterizer, confSampler, self.terminationCondition, self.rng.randint(0,4000000000),i) for i,(inst,conf) in enumerate(todo)]
 
         #It seems that the ThreadPool in multiprocessing must attempt to copy arguments or something in memory that should be shared between threads 
         #If we use it, torch throws a segfault, so we just make the threads manually 

@@ -89,6 +89,7 @@ if __name__ == "__main__":
     # CustomManager.register("ProblemSuite", ProblemSuite, exposed=["generateN","sampleN"])
     # CustomManager.register("Characterizer", Characterizer, exposed=["characterize"])
     CustomManager.register("NNBackedGenerator", NNBackedGenerator, exposed=["update","generate"])
+    CustomManager.register("ConfigGenerator", AdaptiveGenerator, exposed=["generate","update"])
     # CustomManager.register("ConfigurationDB", ConfigurationDB, exposed=["addRun","getReRuns"])
     CustomManager.register("Array", list, exposed=["append", "pop"])
     rng = Random(seed)
@@ -109,11 +110,11 @@ if __name__ == "__main__":
     characterizer = Characterizer()
     
 
-    model = AdaptiveGenerator(159, configurationDefinition, seed=rng.randint(0,4000000000))
+    
     #TODO: figre out how Configure should be made aware of the problem dimensionality 
     #also, what about configuring for problems of different dimensionality simutaneously?
-
-    #model = manager.NNBackedGenerator(159, configurationDefinition, rng.randint(0,4000000000), cpu=True)
+    #model = AdaptiveGenerator(159, configurationDefinition, seed=rng.randint(0,4000000000))
+    model = manager.ConfigGenerator(159, configurationDefinition, rng.randint(0,4000000000), cpu=True)
     #model = RandomGenerator(configurationDefinition, rng.randint(0,4000000000))
     
     runner = RandomInstanceRunner(suite, characterizer, termination, rng.randint(0,4000000000), alg, scenario["threads"]) 
