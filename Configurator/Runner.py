@@ -73,16 +73,29 @@ class Runner:
         def _algWrapper(alg:Callable, args:tuple, out:list):
             out.append(alg(*args))
 
-        threadPool = [Process(target=_algWrapper, args=(self.algorithm.run, x, ret[i])) for i,x in enumerate(todo)]
+        todo = [Process(target=_algWrapper, args=(self.algorithm.run, x, ret[i])) for i,x in enumerate(todo)]
+        running = []
+        done = [] 
 
-        #TODO: polling instead of blocking, if thread x takes longer than threads x+1 to x+n we waste tons of CPU time here 
-        for x in range(self.threads):
-            threadPool[x].start() 
-        for x in range(len(threadPool)):
-            threadPool[x].join() 
-            nxt = x + self.threads 
-            if nxt < len(threadPool):
-                threadPool[nxt].start() 
+        while len(todo) > 0 or len(running) > 0:
+            if len(running) < self.threads and len(todo) > 0:
+                x = todo.pop(0) 
+                running.append(x) 
+                x.start() 
+
+            for i,x in enumerate(running):
+                if not x.is_alive():
+                    running.pop(i) 
+                    break
+
+        # #TODO: polling instead of blocking, if thread x takes longer than threads x+1 to x+n we waste tons of CPU time here 
+        # for x in range(self.threads):
+        #     threadPool[x].start() 
+        # for x in range(len(threadPool)):
+        #     threadPool[x].join() 
+        #     nxt = x + self.threads 
+        #     if nxt < len(threadPool):
+        #         threadPool[nxt].start() 
 
         return [x.pop(0) for x in ret] 
  
