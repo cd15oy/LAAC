@@ -33,7 +33,6 @@ import json
 import argparse
 from random import Random, randint
 from typing import List
-
 from multiprocessing.managers import BaseManager 
 
 #Counts the total FEs consumed by a list of runs 

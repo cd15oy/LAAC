@@ -70,8 +70,8 @@ class TestAlgorithm(unittest.TestCase):
         model1 = RandomGenerator(self.configurationDefinition, self.seed)
         model2 = RandomGenerator(self.configurationDefinition, self.seed)
 
-        out1 = alg.run(self.instance, conf1, self.characterizer, model1, self.condition, self.seed) 
-        out2 = alg.run(self.instance, conf2, self.characterizer, model2, self.condition, self.seed) 
+        out1 = alg.run(self.instance, conf1, self.characterizer, model1, self.condition, self.seed,0) 
+        out2 = alg.run(self.instance, conf2, self.characterizer, model2, self.condition, self.seed,1) 
 
         self.assertEqual(out1.instance.toFlags(), out2.instance.toFlags(), "Results should have the same instance") 
 
