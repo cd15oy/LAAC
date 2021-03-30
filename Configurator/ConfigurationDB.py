@@ -56,13 +56,12 @@ class ConfigurationDB:
             for rcrd in self.records[prob]:
                 if self.records[prob][rcrd].reRun():
                     ret.append(rcrd[0])
-
+                    
     # def recordGenerator(self) -> Iterator["Record"]:
     #     for prob in self.records:
     #         for rcrd in self.records[prob]:
     #             yield self.records[prob][rcrd]
     #TODO: need to provide efficient ways for model, evaluator, etc to scan/retrieve relevent records
-
 
 """
 Wraps the information we have about a particular sequence of configurations 
