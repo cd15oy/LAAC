@@ -199,9 +199,10 @@ class NeuralNetwork(Model):
 
         #TODO: make training paramters, network arch, etc configurable
         #num examples drawn from dataset
+        #also add epochs (Dont forget to randomize the order of examples per epoch)
         self.batchSize = 32
-        self.lr = 0.00001
-        self.momentum = 0.001
+        self.lr = 0.001
+        self.momentum = 0.01
         self.optimizer =torch.optim.RMSprop(self.predictor.parameters(), lr=self.lr, momentum=self.momentum)
          
 
