@@ -48,6 +48,9 @@ class Algorithm:
     #the specific conditions which indicate time to terminate will need to be adapted based on observation, and specific to different problems 
     #the initial condition will probably a total FE limit 
     def run(self, instance: Instance, initialConfig: Configuration, characterizer: Characterizer, model: ConfigurationGenerator, terminationCondition: TerminationCondition, runSeed: int, threadID:int) -> Run:
+
+        #TODO: pass a binary/save of the model into algorithm and load/initialize a copy 
+        #That way each process running run can have its own model, and we can remove a bottle neck
         
         rng = Random(runSeed)
 
