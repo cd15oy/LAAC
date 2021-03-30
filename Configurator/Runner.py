@@ -66,17 +66,19 @@ class Runner:
 
         todo = [(inst, conf, self.characterizer, confSampler, self.terminationCondition, self.rng.randint(0,4000000000),i) for i,(inst,conf) in enumerate(todo)]
 
-        #It seems that the ThreadPool in multiprocessing must attempt to copy arguments or something in memory that should be shared between threads 
-        #If we use it, torch throws a segfault, so we just make the threads manually 
-
         #A wrapper to capture the return value of alg
         def _algWrapper(alg:Callable, args:tuple, out:list):
             out.append(alg(*args))
 
         todo = [Process(target=_algWrapper, args=(self.algorithm.run, x, ret[i])) for i,x in enumerate(todo)]
         running = []
-        done = [] 
 
+        #My understanding is that a Pool uses a simple message queue to pass args into a new process, and retrieve results 
+        #the message queue attempts to pickle everything to make transmission possible, unfortunately some of what we're passing around isn't picklable 
+        #on the other hand, using Process directly just forks the current process, which should use copy on write semantics (at least on linux) avoiding the pickablility issue 
+        #and still not wasting space (despite what top may report) 
+        #I'm not confident that this will behave the same on windows however 
+        #TODO: Test this on windows eventually 
         while len(todo) > 0 or len(running) > 0:
             if len(running) < self.threads and len(todo) > 0:
                 x = todo.pop(0) 
@@ -87,15 +89,6 @@ class Runner:
                 if not x.is_alive():
                     running.pop(i) 
                     break
-
-        # #TODO: polling instead of blocking, if thread x takes longer than threads x+1 to x+n we waste tons of CPU time here 
-        # for x in range(self.threads):
-        #     threadPool[x].start() 
-        # for x in range(len(threadPool)):
-        #     threadPool[x].join() 
-        #     nxt = x + self.threads 
-        #     if nxt < len(threadPool):
-        #         threadPool[nxt].start() 
 
         return [x.pop(0) for x in ret] 
  
