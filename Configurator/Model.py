@@ -200,7 +200,7 @@ class NeuralNetwork(Model):
         #TODO: make training paramters, network arch, etc configurable
         #num examples drawn from dataset
         self.batchSize = 32
-        self.lr = 0.0001
+        self.lr = 0.00001
         self.momentum = 0.001
         self.optimizer =torch.optim.RMSprop(self.predictor.parameters(), lr=self.lr, momentum=self.momentum)
          
