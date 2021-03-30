@@ -23,6 +23,18 @@ import time
 from typing import Iterator, List
 from Configurator.Run import Run
 
+#TODO: We want to store up to N runs from the top X percent of observed runs. Basically we hope that through the first random, but progressively more targeted sampling we do, we'll end up with a variety of configurations which produced strong performance and obviously, as time goes on we should collect more and more runs. We want to limit the total amount of data we hold on to though, so instead we need to store the quality of the Xth best run for each problem, then any runs with better (or maybe close) quality can be kept. Once the total number of stored runs reachs/exceeds N we can start also deleteing random/or the worse stored runs to make room for new examples.
+#strat: store the total number of runs consider over all time, and store the actual position of the Xth best. Anything worse than the Xth best can just be dropped after we updated the total runs count 
+#anything better than the xth best can be kept, but we need to update the total count, and the estimated position of the xth best relative to all considered runs
+#ex, if we find a new run better than the xth best, then the position of the xth best should move down by 1 
+#Once we have N stored runs, we can just assume our threshold value is sufficient/does not need to be updated 
+#after that we can replace a random store run with any new run which is better than our threshold
+#alternatively, we could replace the worst and update the threshold
+#or just replace random runs among the 50% worse stored runs 
+##this option means we're still storing the N/2 best runs we EVER observed, but also a random sampling of "good" runs, sounds like a nice balance between exploration and exploitation
+#BEFORE you spend a lot of time on this, try deleting the stored solutions/states first, since we don't need them after calculating characteristics
+#though regardless we still need to update this to avoid walking the entire DB of stored runs over and over
+
 #TODO: finish fleshing out, need to store all configs and runs, flag un flag runs
 #get passed to updator for updating flags 
 #gets passed to model for data extracton 

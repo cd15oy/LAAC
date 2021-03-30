@@ -16,6 +16,16 @@ You should have received a copy of the GNU Lesser General Public License
 along with this program.  If not, see <https://www.gnu.org/licenses/>.
 """
 
+#TODO: The next 3 major steps:
+#### Update the config DB to avoid the need to rewalk the entire DB over and over and over again
+####    also to drop unneeded inforation, ex the solutions/states and save space
+#### Update the config DB to use sqlite3, and store results on disk  
+#### Test the effects of writing the model to BytesIO and re-reading it separately in each run process, should remove a major bottle neck 
+#### Add logging, which writes run stats to the ConfigDB sqlite3 file
+####    or possible a more portable JSON
+
+#see the copy of Models.py on frank for some different tested NN params
+
 """
 The main file. This file can be run to configure your algorithm after valid LAAC settings files have been defined. See parameters.py 
 """

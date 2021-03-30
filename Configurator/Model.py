@@ -217,7 +217,8 @@ class NeuralNetwork(Model):
                     for run in record.getRuns():
                         examples.append(run) 
         
-        #sample desirable runs 
+        #sample desirable runs #TODO: use random.sample, and resample on each epoch , alternatively we can stick with choice, and replace epochs with k, 
+        #it would be more fine grained control over how much training is done
         examples = self.rng.choices(examples, k=128)
         
         #convert the runs into training examples 
