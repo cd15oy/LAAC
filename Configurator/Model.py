@@ -199,10 +199,10 @@ class NeuralNetwork(Model):
 
         #TODO: make training paramters, network arch, etc configurable
         #num examples drawn from dataset
-        #also add epochs (Dont forget to randomize the order of examples per epoch)
         self.batchSize = 32
         self.lr = 0.001
-        self.momentum = 0.01
+        self.momentum = 0.001
+        self.epochs = 3
         self.optimizer =torch.optim.RMSprop(self.predictor.parameters(), lr=self.lr, momentum=self.momentum)
          
 
@@ -238,39 +238,42 @@ class NeuralNetwork(Model):
         optimizer = self.optimizer 
         optimizer.zero_grad()
         loss = None
-        for i, data in enumerate(examples):
-            #data = dataset.__get__(i) #enumerate(dataset):
-            pattern,target = data  
 
-            #calculated and propagate loss for all outputs
-            pattern = torch.from_numpy(pattern).unsqueeze(0) 
+        for e in range(self.epochs):
+            self.rng.shuffle(examples)
+            for i, data in enumerate(examples):
+                #data = dataset.__get__(i) #enumerate(dataset):
+                pattern,target = data  
 
-            output = self.predictor(pattern.float())
-            for out in output:
-                targetVal = target.values[out[0].name].value 
+                #calculated and propagate loss for all outputs
+                pattern = torch.from_numpy(pattern).unsqueeze(0) 
 
-                if out[0].type == "real" or out[0].type == "integer":
-                    targetVal = [self.__normalizeNumeric(targetVal, out[0])]
-                elif out[0].type == "categorical":
-                    targetVal = self.__categoryToPred(targetVal, out[0])
+                output = self.predictor(pattern.float())
+                for out in output:
+                    targetVal = target.values[out[0].name].value 
 
-                targetVal = torch.tensor(targetVal).unsqueeze(0)
+                    if out[0].type == "real" or out[0].type == "integer":
+                        targetVal = [self.__normalizeNumeric(targetVal, out[0])]
+                    elif out[0].type == "categorical":
+                        targetVal = self.__categoryToPred(targetVal, out[0])
 
-                criteria = out[2]
-                if loss is None:
-                    loss = criteria(out[1], targetVal) 
-                else:
-                    loss += criteria(out[1], targetVal)
-            
-            
+                    targetVal = torch.tensor(targetVal).unsqueeze(0)
 
-            if (1+i) % self.batchSize == 0:
-                loss = loss/self.batchSize
-                loss.backward()
-                print(loss.item())
-                optimizer.step()
-                optimizer.zero_grad()
-                loss = None
+                    criteria = out[2]
+                    if loss is None:
+                        loss = criteria(out[1], targetVal) 
+                    else:
+                        loss += criteria(out[1], targetVal)
+                
+                
+
+                if (1+i) % self.batchSize == 0:
+                    loss = loss/self.batchSize
+                    loss.backward()
+                    print(loss.item())
+                    optimizer.step()
+                    optimizer.zero_grad()
+                    loss = None
 
         #optimizer.step()
         # optimizer.zero_grad()
