@@ -430,14 +430,14 @@ scenario =  {
                                 "problemDefs":"optFiles/problems.json",         #The location of the problem definition file 
                                 "parameterDefs":"optFiles/parameters.json",    #The location of the the parameter definitions 
                                 "runFELimit": 5000,                            #The maximum number of function evaluations which can be consumed by a run of your algorithm
-                                "totalFELimit": 100000,                        #The maximum number of FEs which can be consumed by LAAC 
+                                "totalFELimit": 1000000,                        #The maximum number of FEs which can be consumed by LAAC 
                                 "minRunsPerConfig":1,                           #The minimum number of runs to consider when evaluating a configuration 
                                 "maxRunsPerConfig":30,                      #The maximum number of runs to consider when evaluating a configuration 
                                 "targetAlgorithm":"python3 target-algorithm.py",#The call to run the target algorithm 
                                 "staticArgs":"-d 20",                            #Arguments to be provided to every algorithm call, constant settings  
                                 "strictConstraints": False,                     #Influences how strictly constraint expressions in the parameter definition are enforced
-                                "configsPerIteration":8,                      #The initial number of configurations to test per iteration of LAAC
-                                "threads":8,                                    #Threads to use for algorithm evaluations
+                                "configsPerIteration":32,                      #The initial number of configurations to test per iteration of LAAC
+                                "threads":4,                                    #Threads to use for algorithm evaluations
                                 "seed":12345                                    #Seed for reproducibility
                             }
             }
