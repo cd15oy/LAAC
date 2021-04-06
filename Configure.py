@@ -16,25 +16,28 @@ You should have received a copy of the GNU Lesser General Public License
 along with this program.  If not, see <https://www.gnu.org/licenses/>.
 """
 
-#TODO: The next 3 major steps:
+#TODO: Final Prototype:
 #### Update the config DB to avoid the need to rewalk the entire DB over and over and over again
 ####    also to drop unneeded inforation, ex the solutions/states and save space
 #### Update the config DB to use sqlite3, and store results on disk  
-#### Test the effects of writing the model to BytesIO and re-reading it separately in each run process, should remove a major bottle neck 
+#### validation/applicaitons mode ->  ability to run more configs/sequences using a previously trainied model WITHOUT any addition training. Basically, we need the ability to skip the training steps, and the desirable/rerun flagging. Just want to give the system problems + a trained model and watch it do runs 
 #### Add logging, which writes run stats to the ConfigDB sqlite3 file
 ####    or possible a more portable JSON
+#### update PSO implementation to produce needed output 
+#### collect runs to compare random vs adaptive
 
 #see the copy of Models.py on frank for some different tested NN params
 
 """
 The main file. This file can be run to configure your algorithm after valid LAAC settings files have been defined. See parameters.py 
 """
+import multiprocessing
 from Configurator.Evaluator import SimpleEvaluator
-from Configurator.ConfigurationDB import ConfigurationDB
+from Configurator.ConfigurationDB import sqlite3ConfigurationDB
 from Configurator.Run import Run
 from Configurator.Runner import RandomInstanceRunner
 from Configurator.Characterizer import Characterizer
-from Configurator.ConfigurationGenerator import AdaptiveGenerator, NNBackedGenerator, RandomGenerator
+from Configurator.ConfigurationGenerator import AdaptiveGenerator, RandomGenerator
 from Configurator.ProblemSuite import ProblemSuite
 from Configurator.ConfigurationDefinition import ConfigurationDefinition
 from Configurator.Algorithm import Algorithm
@@ -56,6 +59,9 @@ def countFEs(runs:List[Run]) -> int:
 
 
 if __name__ == "__main__":
+    #needed for torch, since torch is stateful
+    multiprocessing.set_start_method("spawn")
+    
     #READ THE SCENARIO
 
     #Notice that very few command line arguments are supported. The primary means of configuration SHOULD be through scenario, problem, and parameter JSONs. Furthermore, LAAC will not fill in default values for fields missing from the JSONs, all fields must be filled in. This is by choice, it means that in order to run LAAC you must explicitly document all settings/values you use, so as long as you save your JSONs, you know exactly what tests/experiments you've run. 
@@ -92,21 +98,9 @@ if __name__ == "__main__":
     class CustomManager(BaseManager):
         pass 
 
-    # CustomManager.register("Algorithm", Algorithm, exposed=["run"])
-    # CustomManager.register("FELimit", FELimit, exposed=["terminate"])
-    # CustomManager.register("ConfigurationDefinition", ConfigurationDefinition, exposed=["validate"])
-    # CustomManager.register("ProblemSuite", ProblemSuite, exposed=["generateN","sampleN"])
-    # CustomManager.register("Characterizer", Characterizer, exposed=["characterize"])
-    CustomManager.register("NNBackedGenerator", NNBackedGenerator, exposed=["update","generate"])
-    CustomManager.register("ConfigGenerator", AdaptiveGenerator, exposed=["generate","update"])
-    # CustomManager.register("ConfigurationDB", ConfigurationDB, exposed=["addRun","getReRuns"])
-    CustomManager.register("Array", list, exposed=["append", "pop"])
+    #TODO: scenario should have a flag to choose between the adaptive and random generators
+
     rng = Random(seed)
-
-    manager = CustomManager()
-    manager.start() 
-
-
 
     alg = Algorithm(scenario["targetAlgorithm"], scenario["staticArgs"], scenario["strictConstraints"]==False) 
 
@@ -119,16 +113,16 @@ if __name__ == "__main__":
     characterizer = Characterizer()
     
 
-    
+    generatorType = AdaptiveGenerator 
+
     #TODO: figre out how Configure should be made aware of the problem dimensionality 
     #also, what about configuring for problems of different dimensionality simutaneously?
-    #model = AdaptiveGenerator(159, configurationDefinition, seed=rng.randint(0,4000000000))
-    model = manager.ConfigGenerator(159, configurationDefinition, rng.randint(0,4000000000), cpu=True)
+    model = generatorType(159, configurationDefinition, seed=rng.randint(0,4000000000))
     #model = RandomGenerator(configurationDefinition, rng.randint(0,4000000000))
     
     runner = RandomInstanceRunner(suite, characterizer, termination, rng.randint(0,4000000000), alg, scenario["threads"]) 
 
-    configDB = ConfigurationDB() 
+    configDB = sqlite3ConfigurationDB(initialize=True) 
 
     #TODO: eventually evaluator parameter need to be in the scenario file
     evaluator = SimpleEvaluator(0.25, False, scenario["maxRunsPerConfig"])
@@ -138,7 +132,7 @@ if __name__ == "__main__":
     configsPerIteration = scenario["configsPerIteration"] 
     minRunsPerConfig = scenario["minRunsPerConfig"]     
 
-    newRuns = runner.schedule(manager, configsPerIteration, minRunsPerConfig, model) 
+    newRuns = runner.schedule(configsPerIteration, minRunsPerConfig, model.getState()) 
     totalFEsConsumed = countFEs(newRuns)
 
 
@@ -160,12 +154,13 @@ if __name__ == "__main__":
 
         #TODO: limit the total runs per iteration, and/or the total new configs vs the total reuns? adapt the limits according to criteria or iteration?
         toReRun = configDB.getReRuns() 
-        newRuns = runner.schedule(manager, configsPerIteration, minRunsPerConfig, model)
+        newRuns = runner.schedule(configsPerIteration, minRunsPerConfig, model.getState())
         totalFEsConsumed += countFEs(newRuns)
 
-        for prob in configDB.records:
-            for rcrd in configDB.records[prob]:
-                record = configDB.records[prob][rcrd]
+        for problem in configDB.problemGenerator():
+            for record in problem:
+                prob = record.problem 
+
                 if prob not in best:
                     best[prob] = float('inf')
                 if record.desirable():
