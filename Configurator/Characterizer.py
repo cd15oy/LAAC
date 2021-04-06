@@ -46,11 +46,12 @@ class Characteristics(Structure):
         ("gBestStag", POINTER(c_double)),
         ("gBestyDist", POINTER(c_double))
     ]
-    
+
+_characterizeLib = cdll.LoadLibrary('FLA/Characterize.so')
 
 class Characterizer:
     def __init__(self):
-        self.characterizer = cdll.LoadLibrary('FLA/Characterize.so')
+        pass
 
     #returns the size of feature vectors
     def featureSize(dimensionality:int) -> int:
@@ -106,7 +107,7 @@ class Characterizer:
         characteristics.gBestyDist = (c_double*(dims*2))()
 
         try:
-            self.characterizer.characterize(solutions, quality, state, stateQuality, numSolutions, stateSizes, dims, byref(characteristics), seed)
+            _characterizeLib.characterize(solutions, quality, state, stateQuality, numSolutions, stateSizes, dims, byref(characteristics), seed)
 
             # print(characteristics.FDC)
             # print([x for x in characteristics.yDist])
@@ -140,7 +141,8 @@ class Characterizer:
 
             return out
 
-        except:
+        except Exception as e :
+            print(e)
             raise CharacterizerError("An error occurred during characterization")
 
 
