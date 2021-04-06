@@ -46,7 +46,6 @@ import json
 import argparse
 from random import Random, randint
 from typing import List
-from multiprocessing.managers import BaseManager 
 
 #Counts the total FEs consumed by a list of runs 
 def countFEs(runs:List[Run]) -> int:
@@ -61,7 +60,7 @@ def countFEs(runs:List[Run]) -> int:
 if __name__ == "__main__":
     #needed for torch, since torch is stateful
     multiprocessing.set_start_method("spawn")
-    
+
     #READ THE SCENARIO
 
     #Notice that very few command line arguments are supported. The primary means of configuration SHOULD be through scenario, problem, and parameter JSONs. Furthermore, LAAC will not fill in default values for fields missing from the JSONs, all fields must be filled in. This is by choice, it means that in order to run LAAC you must explicitly document all settings/values you use, so as long as you save your JSONs, you know exactly what tests/experiments you've run. 
@@ -94,9 +93,6 @@ if __name__ == "__main__":
             seed = int(args.seed)
     else:
         seed = scenario["seed"]
-
-    class CustomManager(BaseManager):
-        pass 
 
     #TODO: scenario should have a flag to choose between the adaptive and random generators
 

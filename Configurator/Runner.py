@@ -19,7 +19,7 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 
 #from threading import Thread
-import multiprocessing
+import time
 from typing import Callable, List, Tuple
 from Configurator.Algorithm import Algorithm
 from Configurator.Problem import Instance
@@ -86,17 +86,21 @@ class Runner:
         #and still not wasting space (despite what top may report) 
         #I'm not confident that this will behave the same on windows however 
         #TODO: Test this on windows eventually 
+        
         while len(todo) > 0 or len(running) > 0:
-           
-            if len(running) < self.threads and len(todo) > 0:
+            stillRunning = []
+            while len(running) < self.threads and len(todo) > 0:
                 x = todo.pop(0) 
                 running.append(x) 
                 x.start() 
 
             for i,x in enumerate(running):
-                if not x.is_alive():
-                    running.pop(i) 
-                    break
+                if x.is_alive():
+                    stillRunning.append(x) 
+            
+            running = stillRunning
+            
+            time.sleep(0.05)
 
         return [x.pop(0) for x in ret] 
  
