@@ -53,10 +53,9 @@ class SimpleEvaluator(Evaluator):
     #classifies a run as desirable if it's quality falls with the top x percent for that problem 
     #x should be a float in [0,1] where 0 will only use the best configuration for each problem, and 1 will use all configurations
     def _topX(self, configDB:ConfigurationDB, x:float) -> None:
-        for prob in configDB.records:
+        for problem in configDB.problemGenerator():
             records = []
-            for rcrd in configDB.records[prob]:
-                record = configDB.records[prob][rcrd]
+            for record in problem:
                 runs = record.getRuns() 
                 quality = mean([x.configurations[-1].rawResult["solutions"][-1]["quality"] for x in runs])
                 records.append((quality, record))
@@ -78,9 +77,8 @@ class SimpleEvaluator(Evaluator):
 
     #always asks for more runs of a desirable configuration, until the maximum number of runs per configuration is reached 
     def _alwaysReRun(self, maxRunsPerConfig:int, configDB:ConfigurationDB) -> None:
-        for prob in configDB.records:
-            for rcrd in configDB.records[prob]:
-                record = configDB.records[prob][rcrd]
+        for problem in configDB.problemGenerator():
+            for record in problem:
                 if record.desirable():
                     if len(record.getRuns()) < maxRunsPerConfig:
                         record.reRun(True)
