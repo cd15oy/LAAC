@@ -21,8 +21,7 @@ This class represents the target algorithm.
 """
 
 from json.decoder import JSONDecodeError
-import multiprocessing
-from Configurator.ConfigurationGenerator import ConfigurationGenerator
+from Configurator.ConfigurationGenerator import initModel
 from Configurator.ConfigurationDefinition import Configuration  
 from Configurator.Run import Run 
 from Configurator.Problem import Instance
@@ -31,7 +30,6 @@ from Configurator.Characterizer import Characterizer
 from subprocess import Popen, PIPE
 import json
 from random import Random
-import threading
 
 #TODO: tests for evaluateInvalid = False 
 
@@ -47,12 +45,11 @@ class Algorithm:
     #its possible that we will produce cases which stagnate for a while, then see improvement 
     #the specific conditions which indicate time to terminate will need to be adapted based on observation, and specific to different problems 
     #the initial condition will probably a total FE limit 
-    def run(self, instance: Instance, initialConfig: Configuration, characterizer: Characterizer, model: ConfigurationGenerator, terminationCondition: TerminationCondition, runSeed: int, threadID:int) -> Run:
+    def run(self, instance: Instance, initialConfig: Configuration, characterizer: Characterizer, modelState: dict, terminationCondition: TerminationCondition, runSeed: int, threadID:int) -> Run:
 
-        #TODO: pass a binary/save of the model into algorithm and load/initialize a copy 
-        #That way each process running run can have its own model, and we can remove a bottle neck
-        
         rng = Random(runSeed)
+
+        model = initModel(modelState, rng.randint(0,4000000000))
 
         #A Run is simply a list of configurations 
         #Each individual configuration will contain the hyper parameters, and data collected about the algorithm
