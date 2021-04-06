@@ -16,14 +16,21 @@ You should have received a copy of the GNU Lesser General Public License
 along with this program.  If not, see <https://www.gnu.org/licenses/>.
 """
 
+
+import pickle
 from random import Random
-from typing import Tuple
+from typing import Dict, Tuple
 from Configurator.ConfigurationDB import ConfigurationDB
 from Configurator.ConfigurationDefinition import ConfigurationDefinition,Configuration
 from Configurator.Model import LatinHyperCube, NeuralNetwork
 from numpy import ndarray
 from copy import deepcopy
-from threading import Lock
+
+#TODO:BIG DEAL rnd and adaptive need to be updated to load a seed parameter instead of a random state 
+#we NEED all processes to have different RNG to get run diversity 
+def initModel(state:dict, seed:int=None) -> "ConfigurationGenerator":
+    return state["type"].loadState(state, seed)
+
 
 
 #TODO: the method signatures here will likely change as we flesh out the system 
@@ -39,7 +46,7 @@ could be entirely random, could make use of/train multiple different models, etc
 """
 class ConfigurationGenerator:
     def __init__(self, confDef:ConfigurationDefinition):
-        self.lock = Lock()
+        #self.lock = Lock()
         self.confDef = confDef
 
     #TODO (maybe): instead of providing a single feature array to predict from, provide the feature arrays from all runs of the same sequence? 
@@ -47,7 +54,6 @@ class ConfigurationGenerator:
     #This might give the ConfigurationGenerator a way to make multiple attempts when a models predictions don't meet the constraints
 
     #Both _generateWithoutFeatures, and _generateWithFeatures should return a str identifying the method with which the configuration was generated and a dict defining the configuration
-
     #generate a single new config without using a feature vector
     def _generateWithoutFeatures(self) -> Tuple[str,dict]:
         raise NotImplementedError    
@@ -62,23 +68,31 @@ class ConfigurationGenerator:
 
     #updates the generation process based on the collected data 
     def update(self, confDB:ConfigurationDB) -> None:
-        with self.lock:
-            self._update(confDB)
+        #with self.lock:
+        self._update(confDB)
         
     #in some cases the "features" attached to a config may be None, for example when the configuration was invalid, and LAAC was told not to evaluate invalid configurations
     #this is just a wrapper to handle such cases
     def generate(self, features:ndarray= None) -> Configuration:
-        with self.lock:
-            if features is None:
-                method,conf = self._generateWithoutFeatures() 
-            else:
-                method,conf = self._generateWithFeatures(features)
+        #with self.lock:
+        if features is None:
+            method,conf = self._generateWithoutFeatures() 
+        else:
+            method,conf = self._generateWithFeatures(features)
 
-            config = Configuration(self.confDef, conf)
-            config.generationMethod = method
+        config = Configuration(self.confDef, conf)
+        config.generationMethod = method
 
-            return config
+        return config
 
+    #Should return a copy of the models internal state. Saving and restoring the state of the model should not impact the output of the model.
+    def getState(self) -> dict():
+        raise NotImplementedError
+
+    #Should return a new ConfigurationGenerator initialized with the provided state. Saving and restoring the state of the model should not impact the output of the model.
+    @classmethod
+    def loadState(cls, state:Dict, seed:int = None) -> None:
+        raise NotImplementedError
 
 """
 A purely random configuration generator. With this generator LAAC will simply perform a random sampling of the configuration space.
@@ -86,6 +100,7 @@ A purely random configuration generator. With this generator LAAC will simply pe
 class RandomGenerator(ConfigurationGenerator):
     def __init__(self, confDef:ConfigurationDefinition, seed:int):
         super(RandomGenerator,self).__init__(confDef) 
+        self.confDef = confDef
         self.model = LatinHyperCube(1000, confDef, seed) 
 
     #LatinHyperCube ignores features entirely, its a random sampler
@@ -100,27 +115,29 @@ class RandomGenerator(ConfigurationGenerator):
     def _update(self, confDB:ConfigurationDB) -> None:
         pass 
 
+    #should return a copy of the models internal state. Saving and restoring the state of the model should not impact the output of the model.
+    def getState(self) -> dict():
+        state = dict() 
+        state["type"] = RandomGenerator 
+        state["confDef"] = pickle.dumps(self.confDef) 
+        state["state"] = deepcopy(self.model.state())
+        
+        return state 
 
-"""
-A non-random configuration generator. Appropriate configurations are predicted via a neural network based on landscape features. 
-"""
-class NNBackedGenerator(ConfigurationGenerator):
-    def __init__(self, featureSize:int, confDef:ConfigurationDefinition, seed:int, cpu:bool = True):
-        super(NNBackedGenerator,self).__init__(confDef) 
-        self.rndModel = LatinHyperCube(1000, confDef, seed) 
-        self.nn = NeuralNetwork(featureSize, confDef, seed, cpu)
+    #should initialzie the ConfigurationGenerator with the provided state. Saving and restoring the state of the model should not impact the output of the model.
+    @classmethod
+    def loadState(cls, state:Dict, seed:int = None) -> None:
+        if seed is None:
+            initSeed = 0 
+        else:
+            initSeed = seed 
 
-    #LatinHyperCube ignores features entirely, its a random sampler
-    def _generateWithoutFeatures(self) -> Tuple[str,dict]:
-        return "Random", self.rndModel.generate(None) 
+        model = cls(pickle.loads(state["confDef"]), initSeed) 
 
-    #Predict appropriate parameters based on the provided features
-    def _generateWithFeatures(self, features:ndarray=None) -> Tuple[str,dict]:
-        return "Informed", self.nn.generate(features) 
+        if seed is None:
+            model.model.load(state["state"])
 
-    #Train the model
-    def _update(self, confDB:ConfigurationDB) -> None:
-        self.nn.update(confDB)
+        return model 
 
 """
 An adaptive ConfigurationGenerator. This implementation attempts to balance random sampling (for exploration) with features predicted via neural network. The proportions of randomly sampled parameters vs predicted paramters are determined automatically based on the quality of previously produced configurations.
@@ -132,7 +149,7 @@ class AdaptiveGenerator(ConfigurationGenerator):
     #maxInformedPercent indicates the maximum percentage of configurations which should be generated via NN prediction
     #informedPercentVariance is the acceptable variance in informedPercent. In pratice the percentage of predictions to perform via NN will be updated periodically, and chosen via informedPercent + N(0, variance)
     #period refers to the initial number of times _generateWithFeatures will be called before the percentage of predictons to perform via NN updates. This value will updated adaptively at run time based on the expected number of calls to _generateWithFeatures per run 
-    def __init__(self, featureSize:int, confDef:ConfigurationDefinition, seed:int, cpu:bool = True, minInformedPercent:float=0.05, maxInformedPercent:float=0.95, informedPercentVariance:float=0.1, period:int=100):
+    def __init__(self, featureSize:int, confDef:ConfigurationDefinition, seed:int, cpu:bool = True, minInformedPercent:float=0.05, maxInformedPercent:float=0.95, informedPercentVariance:float=0.1):
         super(AdaptiveGenerator,self).__init__(confDef) 
         self.rng = Random(seed)
         self.rndModel = LatinHyperCube(1000, confDef, self.rng.randint(0,4000000000)) 
@@ -140,15 +157,13 @@ class AdaptiveGenerator(ConfigurationGenerator):
         self.minInformedPercent = minInformedPercent
         self.maxInformedPercent = maxInformedPercent
         self.informedPercentVariance = informedPercentVariance
-        self.period = period
+        self.featureSize = featureSize
 
         #TODO: should informedPercent be selected on a per problem basis?
         self._informedPercent = self.minInformedPercent
         self._informedPercentRnd = None 
 
         self._chooseNewInformedPercentRnd()
-
-        self._predictions = 0
 
         self._starterConfigs = [] #Will contain a list of initial configurations which previous led to desirable runs 
 
@@ -158,13 +173,6 @@ class AdaptiveGenerator(ConfigurationGenerator):
             self._informedPercentRnd = self.maxInformedPercent 
         if self._informedPercentRnd < self.minInformedPercent:
             self._informedPercentRnd = self.minInformedPercent
-
-    def _trackPredictionsMade(self):
-        self._predictions += 1 
-
-        if self._predictions == self.period:
-            self._predictions = 0 
-            self._chooseNewInformedPercentRnd()
 
     #LatinHyperCube is used when no features are provided, since we have nothing to base feature selection on 
     def _generateWithoutFeatures(self) -> Tuple[str,dict]:
@@ -188,11 +196,6 @@ class AdaptiveGenerator(ConfigurationGenerator):
     #Testing to see if we can use the RandomGenerator and torch at the same time despite the GIL
     def generate(self, features:ndarray= None) -> Configuration:
 
-        #Only perform locking at this level for the state of this class 
-        with self.lock:
-            self._trackPredictionsMade() 
-
-        #locking is performed at the model level as well to protect model state
         if features is None:
             method,conf = self._generateWithoutFeatures() 
         else:
@@ -210,8 +213,6 @@ class AdaptiveGenerator(ConfigurationGenerator):
 
         rcrdGen = confDB.recordGenerator() 
 
-        runsCount = 0 
-        runsLen = 0 
         observedInformedConfigs = 0
         observedConfigs = 0 
 
@@ -223,12 +224,9 @@ class AdaptiveGenerator(ConfigurationGenerator):
         for rcrd in rcrdGen:
             if rcrd.desirable():
                 runs = rcrd.getRuns()
-                runsCount += len(runs) 
 
                 for run in runs:
                     self._starterConfigs.append(deepcopy(run.configurations[0]._origDict))
-
-                    runsLen += len(run.configurations)
 
                     observedConfigs += len(run.configurations)
                     for conf in run.configurations:
@@ -237,10 +235,47 @@ class AdaptiveGenerator(ConfigurationGenerator):
 
         #TODO: non-desirable configs should be pruned here to save on space 
 
-        aveRunLen = runsLen / runsCount 
         aveInformedConfig = observedInformedConfigs/observedConfigs 
 
-        self.period = 10*int(aveRunLen) #We'll update _informedPercentRnd on average every 10 runs 
         self._informedPercent = aveInformedConfig #On average, the percentage of predictions which should be "informed" are chosen based on the percentage of informed predictions among the desirable configurations 
         print("Informed Percent: {}".format(self._informedPercent))
-        print("Period: {}".format(self.period))
+
+
+    #should return a copy of the models internal state. Saving and restoring the state of the model should not impact the output of the model.
+    def getState(self) -> dict():
+        state = dict()
+        state["nn"] = self.nn.state()
+        state["rnd"] = self.rndModel.state() 
+        state["rng"] = pickle.dumps(self.rng)
+        state["minInfPerc"] = self.minInformedPercent 
+        state["maxInfPerc"] = self.maxInformedPercent 
+        state["infPercVar"] = self.informedPercentVariance
+        state["starterConfigs"] = self._starterConfigs 
+        state["featureSize"] = self.featureSize
+        state["confDef"] = pickle.dumps(self.confDef)
+        state["type"] = AdaptiveGenerator
+        return deepcopy(state)
+
+    #should initialzie the ConfigurationGenerator with the provided state. Saving and restoring the state of the model should not impact the output of the model.
+    @classmethod
+    def loadState(cls, state:Dict, seed:int=None) -> None:
+
+        if seed is None:
+            initSeed = 0
+        else:
+            initSeed = seed 
+
+        model = cls(state["featureSize"], pickle.loads(state["confDef"]), initSeed, True, state["minInfPerc"], state["maxInfPerc"], state["infPercVar"])
+
+        model.nn.load(state["nn"])
+        model._starterConfigs = state["starterConfigs"]
+
+        if seed is None:
+            model.rndModel.load(state["rnd"])
+            model.rng = pickle.loads(state["rng"]) 
+
+        #Each "run" will load its own copy of the model, and thus use a semi-random value for informedPercentRnd
+        #This should allow the percentage of predicted parameters to increase over time once the predicted parameters begin to perform well
+        model._chooseNewInformedPercentRnd()
+
+        return model
