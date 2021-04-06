@@ -55,25 +55,16 @@ class TestRunner(unittest.TestCase):
         
     def testRandomInstance(self):
 
-        class CustomManager(BaseManager):
-            pass 
-        CustomManager.register("ConfigGenerator", RandomGenerator, exposed=["generate","update"])
-        # CustomManager.register("ConfigurationDB", ConfigurationDB, exposed=["addRun","getReRuns"])
-        CustomManager.register("Array", list, exposed=["append", "pop"])
-
-        manager = CustomManager()
-        manager.start()
-
         rndInstRunner1 = self._initRunner(RandomInstanceRunner) 
         rndInstRunner2 = self._initRunner(RandomInstanceRunner)
 
-        sampler1 = manager.ConfigGenerator(self.confDef, self.seed)
-        sampler2 = manager.ConfigGenerator(self.confDef, self.seed)
+        sampler1 = RandomGenerator(self.confDef, self.seed)  
+        sampler2 = RandomGenerator(self.confDef, self.seed)
        
      
 
-        runs1 = rndInstRunner1.schedule(manager, 10, 2, sampler1, None) 
-        runs2 = rndInstRunner2.schedule(manager, 10, 2, sampler2, None)
+        runs1 = rndInstRunner1.schedule(10, 2, sampler1.getState(), None) 
+        runs2 = rndInstRunner2.schedule(10, 2, sampler2.getState(), None)
 
         for r1, r2 in zip(runs1,runs2):
             for c1,c2 in zip(r1.configurations,r2.configurations):
