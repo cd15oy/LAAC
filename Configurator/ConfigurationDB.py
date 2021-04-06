@@ -19,9 +19,12 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 """
 Stores the collection of configurations that have been tested. Organized by run, which allows us to know the sequence in which configs were used.
 """
+from Configurator.ConfigurationDefinition import Configuration
 import time
-from typing import Iterator, List
+from typing import Iterator, List, Union
 from Configurator.Run import Run
+import sqlite3
+import pickle
 
 #TODO: We want to store up to N runs from the top X percent of observed runs. Basically we hope that through the first random, but progressively more targeted sampling we do, we'll end up with a variety of configurations which produced strong performance and obviously, as time goes on we should collect more and more runs. We want to limit the total amount of data we hold on to though, so instead we need to store the quality of the Xth best run for each problem, then any runs with better (or maybe close) quality can be kept. Once the total number of stored runs reachs/exceeds N we can start also deleteing random/or the worse stored runs to make room for new examples.
 #strat: store the total number of runs consider over all time, and store the actual position of the Xth best. Anything worse than the Xth best can just be dropped after we updated the total runs count 
@@ -35,81 +38,266 @@ from Configurator.Run import Run
 #BEFORE you spend a lot of time on this, try deleting the stored solutions/states first, since we don't need them after calculating characteristics
 #though regardless we still need to update this to avoid walking the entire DB of stored runs over and over
 
-#TODO: finish fleshing out, need to store all configs and runs, flag un flag runs
-#get passed to updator for updating flags 
-#gets passed to model for data extracton 
-
-#TODO: Once this is somewhat finalized re-write it for efficency
-#need to store the config db on disk probably
-class ConfigurationDB:
-    def __init__(self):
-        self.records = dict() 
-
-    def addRun(self, run: Run) -> None:
-        prob = run.problem()
-        id = run.runConfigID()
-        if prob not in self.records:
-            self.records[prob] = dict() 
-
-        rcrdsForProblem = self.records[prob]
-        if id not in rcrdsForProblem:
-            rcrd = Record() 
-            rcrdsForProblem[id] = rcrd 
-        
-        rcrdsForProblem[id].addRun(run) 
-
-        #Set rerun to false, since we're adding a new run 
-        rcrdsForProblem[id].reRun(False)
-
-    #produces a list of configurations which have been flagged for an additional run
-    def getReRuns(self) -> List[Run]:
-        ret = [] 
-        for prob in self.records:
-            for rcrd in self.records[prob]:
-                if self.records[prob][rcrd].reRun():
-                    ret.append(rcrd[0])
-
-    def recordGenerator(self) -> Iterator["Record"]:
-        for prob in self.records:
-            for rcrd in self.records[prob]:
-                yield self.records[prob][rcrd]
-    #TODO: need to provide efficient ways for model, evaluator, etc to scan/retrieve relevent records
 
 """
 Wraps the information we have about a particular sequence of configurations 
 """
-class Record:
-    def __init__(self):
-        self._runs = [] #the runs that have been performed 
-        self._reRun = False #whether or not more runs are required 
-        self._desirable = False #whether or not this configuration is "good" compared to the others
-        self._updatedAt = int(time.time()*1000000)
-
-    #we use getters and setter shere to ensure that updatedAt is accurate 
-    #models will likely be interested in finding records that have been updated since they last view the DB
-    #so we need to make it easy to find 'new' records 
-
+class RecordTemplate:
     def addRun(self, run: Run) -> None:
-        self._runs.append(run)
-        self._updatedAt = int(time.time()*1000000)
+        raise NotImplementedError
 
     def getRuns(self) -> List[Run]:
-        return self._runs
+        raise NotImplementedError
 
-    def reRun(self, val:bool=None) -> None:
+    def reRun(self, val:bool=None) -> Union[None, bool]:
+       raise NotImplementedError
+
+    def desirable(self, val:bool=None) ->  Union[None, bool]:
+        raise NotImplementedError
+
+    def updatedAt(self) -> int:
+        raise NotImplementedError
+
+"""
+Defines our database of tested configurations
+"""
+class ConfigurationDB:
+
+    #Add a run to the DB
+    def addRun(self, run: Run) -> None:
+        raise NotImplementedError
+
+    #produces a list of configurations which have been flagged for an additional run
+    def getReRuns(self) -> List[Run]:
+        raise NotImplementedError
+
+    #produces the current desirbale runs 
+    def getDesirables(self) -> List[Run]:
+        raise NotImplementedError
+
+    #iterate through all records in the database
+    def recordGenerator(self) -> Iterator[RecordTemplate]:
+        raise NotImplementedError
+
+    #returns any records as new as or newer than time 
+    def getNew(self, time) -> Iterator[RecordTemplate]:
+        raise NotImplementedError
+
+    #returns a generator of generators, each generating all records for a specifc problem 
+    def problemGenerator(self) -> Iterator[Iterator[RecordTemplate]]:
+        raise NotImplementedError
+    
+"""
+A record implementation for accessing records from an sqlite3 backed configuration DB.
+"""
+class sqlite3Record(RecordTemplate):
+    #TODO: a record should know which problem it's associated with 
+    #id is the primary key of the record 
+    #con is a connection to the underlying db 
+    def __init__(self, id:int, problem:int, db:sqlite3.Connection):
+        #No internal state here, this is just a class for interfacing with out DB
+        self.id = id
+        self.db = db
+        self.problem = problem
+
+    #add a run to the record
+    def addRun(self, run: Run) -> None:
+        cur = self.db.cursor()
+        runBlob = pickle.dumps(run)
+        cur.execute("  INSERT INTO runs        (run, record) \
+                            VALUES                  ({},{},{})".format(runBlob, self.id))
+
+        cur.execute("  UPDATE records \
+                            SET modified = {} \
+                            WHERE id = {}".format(int(time.time()*1000000), self.id))
+        self.db.commit()
+
+    #list the runs associated with the record
+    def getRuns(self) -> List[Run]:
+        cur = self.db.cursor() 
+        cur.execute("   SELECT run \
+                        FROM runs \
+                        WHERE record = {}".format(self.id))
+
+        return [pickle.loads(row[0]) for row in cur]
+
+    #check or set this records rerun flag
+    def reRun(self, val:bool=None) -> Union[None, bool]:
+        cur = self.db.cursor()
         if val is None:
-            return self._reRun 
+            cur.execute("   SELECT rerun \
+                            FROM records \
+                            WHERE id = {}".format(self.id)) 
+            return cur.fetchone()[0] != 0
         else:
-            self._reRun = val 
-            self._updatedAt = int(time.time()*1000000)
+            if val:
+                rerun = 1 
+            else:
+                rerun = 0
+            cur.execute("   UPDATE records \
+                            SET modified = {}, rerun = {} \
+                            WHERE id = {}".format(int(time.time()*1000000), rerun, self.id))
+            self.db.commit()
 
-
-    def desirable(self, val:bool=None) -> None:
+    #check or set this records desirable flag
+    def desirable(self, val:bool=None) ->  Union[None, bool]:
+        cur = self.db.cursor()
         if val is None:
-            return self._desirable 
+            cur.execute("   SELECT desirable \
+                            FROM records \
+                            WHERE id = {}".format(self.id)) 
+            return cur.fetchone()[0] != 0 
         else:
-            self._desirable = val 
-            self._updatedAt = int(time.time()*1000000)
+            if val:
+                desirable = 1 
+            else:
+                desirable = 0
+            cur.execute("   UPDATE records \
+                            SET modified = {}, desirable = {} \
+                            WHERE id = {}".format(int(time.time()*1000000), desirable, self.id))
+            self.db.commit()
 
-    def updatedAt(self):
-        return self._updatedAt
+    #retrieve the modified time of this record 
+    def updatedAt(self) -> int:
+        cur = self.db.cursor()
+        cur.execute("   SELECT modified \
+                        FROM records \
+                        WHERE id = {}".format(self.id))
+        return cur.fetchone()[0]
+
+"""
+A configuration DB backed by sqlite 3.
+"""
+class sqlite3ConfigurationDB(ConfigurationDB):
+    
+    #Connect to the DB found at path. If initialize is true, a fresh DB will be initialized.
+    def __init__(self, path:str=":memory:", initialize:bool=False):
+        self.db = sqlite3.connect(path)
+        cur = self.db.cursor()
+        
+        #Attempt to drop any tables that already exist and re-initialize them 
+        if initialize:
+            cur.execute("DROP TABLE IF EXISTS runs")
+            cur.execute("DROP TABLE IF EXISTS records") 
+
+            cur.execute("CREATE TABLE records ( \
+                id          INTEGER PRIMARY KEY, \
+                problem     INTEGER NOT NULL, \
+                config      INTEGER NOT NULL, \
+                desirable   INTEGER NOT NULL, \
+                rerun       INTEGER NOT NULL, \
+                modified    INTEGER NOT NULL \
+            )")
+
+            cur.execute("CREATE TABLE runs ( \
+                run     BLOB NOT NULL, \
+                record  INTEGER NOT NULL, \
+                FOREIGN KEY(record) REFERENCES records(id) \
+            )")
+
+            self.db.commit()
+
+    #Add a run to the DB
+    def addRun(self, run: Run) -> None:
+        cur = self.db.cursor()
+
+        config = run.runConfigID() 
+        problem = run.problem()
+        
+        #Check for an exists record, and create if none
+        cur.execute("SELECT id FROM records WHERE config = {} AND problem = {}".format(config,problem)) 
+        result = cur.fetchone()
+        if result is None:
+            cur.execute(   "   INSERT INTO records    (config, problem, desirable, rerun, modified)\
+                                    VALUES                  ({},{},{},{},{})".format(config, problem, 0, 0, int(time.time()*1000000)))
+            #self.db.commit()
+            cur.execute("SELECT id FROM records WHERE config = {} AND problem = {}".format(config,problem))
+            result = cur.fetchone()
+
+        rcrdID = result[0]
+        
+
+        runBlob = pickle.dumps(run)
+
+        cur.execute("  INSERT INTO runs        (run, record) \
+                            VALUES                  (?,?)", (runBlob, rcrdID))
+
+        cur.execute("  UPDATE records \
+                            SET modified = {} \
+                            WHERE id = {}".format(int(time.time()*1000000), rcrdID))
+        self.db.commit()
+
+    #produces a list of configurations which have been flagged for an additional run
+    def getReRuns(self) -> List[Configuration]:
+        cur = self.db.cursor()
+
+        #grab an example run from each record flagged for rerun
+        cur.execute("   SELECT run, record \
+                        FROM    runs    INNER JOIN      (SELECT id \
+                                                        FROM records \
+                                                        WHERE rerun != 0) as RCRDS \
+                                        ON runs.record = RCRDS.id  \
+                        GROUP BY record ")
+
+        ret = []
+        #duplicate the initial config, and return
+        for row in cur:
+            run = pickle.loads(row[0])
+            newConf = run.configurations[0].duplicateParams() 
+            ret.append(newConf) 
+        
+        return ret
+        
+    #produces the current desirable runs 
+    def getDesirables(self) -> List[Run]:
+        cur = self.db.cursor()
+
+        #grab an example run from each record flagged for rerun
+        cur.execute("   SELECT run \
+                        FROM    runs    INNER JOIN      (SELECT id \
+                                                        FROM records \
+                                                        WHERE desirable != 0) as RCRDS \
+                                        ON runs.record = RCRDS.id ")
+
+        ret = [] 
+        for row in cur:
+            run = pickle.loads(row[0]) 
+            ret.append(run)
+        return ret 
+
+    def _generateRecordsForProblem(self, problem):
+        cur = self.db.cursor()
+        cur.execute("   SELECT id, problem \
+                        FROM records \
+                        WHERE problem = {}".format(problem))
+
+        for id, problem in cur:
+            yield sqlite3Record(id, problem, self.db) 
+
+    #returns a generator of generators, each generating all records for a specifc problem 
+    def problemGenerator(self) -> Iterator[Iterator[RecordTemplate]]:
+        cur = self.db.cursor() 
+        cur.execute("   SELECT DISTINCT problem \
+                        FROM records") 
+
+        problems =[row[0] for row in cur] 
+
+        for problem in problems:
+            yield self._generateRecordsForProblem(problem)
+             
+    #iterate through all records in the database
+    def recordGenerator(self) -> Iterator[RecordTemplate]:
+        return self.getNew(0)
+
+    #returns any records as new as or newer than time 
+    def getNew(self, time) -> Iterator[RecordTemplate]:
+        cur = self.db.cursor() 
+        cur.execute("   SELECT id,problem \
+                        FROM records \
+                        WHERE modified >= {}".format(time))
+
+        for row in cur:
+            yield sqlite3Record(row[0], row[1], self.db) 
+
+        
+
