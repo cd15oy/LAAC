@@ -19,18 +19,23 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 
 #from threading import Thread
+import multiprocessing
 from typing import Callable, List, Tuple
 from Configurator.Algorithm import Algorithm
 from Configurator.Problem import Instance
 from Configurator.TerminationCondition import TerminationCondition
 from Configurator.ConfigurationDefinition import Configuration
 from Configurator.Run import Run
-from Configurator.ConfigurationGenerator import ConfigurationGenerator
+from Configurator.ConfigurationGenerator import ConfigurationGenerator, initModel
 from random import Random
 from Configurator.Characterizer import Characterizer
 from Configurator.ProblemSuite import ProblemSuite
 
-from multiprocessing import Process
+from multiprocessing import Process, Manager
+
+#A wrapper to capture the return value of alg
+def _algWrapper(alg:Callable, args:tuple, out:list):
+    out.append(alg(*args))
 
 """
 Runners are responsible for collecting runs of the target algorithm. This involves performing additional runs of existing configurations, as well as obtaining/running new configurations from the model. Runners are responsible for generatin the specific problem instances a configuration is evaluated on and ensuring the data we collect about a configuration provides a reliable description of the configuration.
@@ -52,23 +57,25 @@ class Runner:
     def _generateInstances(self, confSampler:ConfigurationGenerator, configurations:List[Tuple[int,Configuration]]=None, runs:List[Tuple[int,Run]]=None) -> List[Tuple[Instance,Configuration]]:
         raise NotImplementedError
 
+    #TODO: reruns should be update to be a list of configurations 
     #Performs numInstances runs each for numNewConfigs new configuration sequences and performance an additional run on a new instance for any runs in configsToReRun 
-    def schedule(self, manager, numNewConfigs:int, numInstances:int, confSampler:ConfigurationGenerator, configsToReRun:List[Run] = None) -> List[Run]:
+    def schedule(self, numNewConfigs:int, numInstances:int, confSamplerState:dict, configsToReRun:List[Run] = None) -> List[Run]:
+        confSampler:ConfigurationGenerator = initModel(confSamplerState)
+
         configs = [(numInstances, confSampler.generate()) for x in range(numNewConfigs)]
 
+        #TODO: reruns should be update to be a list of configurations
         reRun = None
         if configsToReRun is not None:
             reRun = [(1,x) for x in configsToReRun] 
 
         todo = self._generateInstances(configs, reRun) 
 
-        ret = [manager.Array() for x in range(len(todo))] 
+        manager = Manager() 
 
-        todo = [(inst, conf, self.characterizer, confSampler, self.terminationCondition, self.rng.randint(0,4000000000),i) for i,(inst,conf) in enumerate(todo)]
+        ret = [manager.list() for x in range(len(todo))] 
 
-        #A wrapper to capture the return value of alg
-        def _algWrapper(alg:Callable, args:tuple, out:list):
-            out.append(alg(*args))
+        todo = [(inst, conf, self.characterizer, confSamplerState, self.terminationCondition, self.rng.randint(0,4000000000),i) for i,(inst,conf) in enumerate(todo)]
 
         todo = [Process(target=_algWrapper, args=(self.algorithm.run, x, ret[i])) for i,x in enumerate(todo)]
         running = []
@@ -80,6 +87,7 @@ class Runner:
         #I'm not confident that this will behave the same on windows however 
         #TODO: Test this on windows eventually 
         while len(todo) > 0 or len(running) > 0:
+           
             if len(running) < self.threads and len(todo) > 0:
                 x = todo.pop(0) 
                 running.append(x) 
@@ -97,6 +105,7 @@ class Runner:
 
 class RandomInstanceRunner(Runner):
     
+    #TODO: reruns should be update to be a list of configurations
     def _generateInstances(self, configurations:List[Tuple[int,Configuration]]=None, runs:List[Tuple[int,Run]]=None) -> List[Tuple[Instance,Configuration]]:
         ret = [] 
         if configurations is not None:
