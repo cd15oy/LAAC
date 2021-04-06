@@ -16,16 +16,17 @@ You should have received a copy of the GNU Lesser General Public License
 along with this program.  If not, see <https://www.gnu.org/licenses/>.
 """
 
-from typing import List
+from copy import deepcopy
+from io import BytesIO
+import pickle
+from typing import Dict, List
 from Configurator.ConfigurationDefinition import ConfigurationDefinition
 from Configurator.ConfigurationDB import ConfigurationDB
-import threading
 import numpy as np
 from numpy import ndarray
-import torch 
 from math import isfinite
 from random import Random,seed as setPythonSeed
-import os
+import torch
 
 
 #TODO: remove model level locking, its moved up to  the config generator
@@ -34,25 +35,16 @@ This class defines a method for selecting the "next" configuration to be used wi
 """
 class Model:
 
-    #One model may be shared among multiple workers which are waiting on results from the target algorithm 
-    #Since models may be statefull, we need to ensure that only one worker is able to use the model at a time, thus Locking is required
-    def __init__(self):
-        self.lock = threading.Lock()
-
     #This method should return a dictionary where the keys are the parameter names and the values are the parameter values
     def generate(self, features:ndarray) -> dict:
-        self.lock.acquire() 
         config = self._generate(features) 
-        self.lock.release() 
         return config
     
     #LAAC will provide the configurationDb to the model
     #the ConfigurationDB will contain information about the tested configurations, the runs performed with them, and which configurations respresent desirable output 
     #update is responsible for selecting useful information from the DB, and updating the model to produce better predictions
     def update(self, configs:ConfigurationDB) -> None:
-        self.lock.acquire()
         self._update(configs) 
-        self.lock.release()
 
     #Model implementations must implement this method to be used by LAAC
     def _generate(self, features:ndarray) -> dict:
@@ -60,6 +52,14 @@ class Model:
 
     #Model implementations must provide a method for updating themselves from a ConfigurationDB 
     def _update(self, configs:ConfigurationDB) -> None:
+        raise NotImplementedError
+
+    #returns a dict defining the internal state of the model 
+    def state(self) -> Dict:
+        raise NotImplementedError
+
+    #loads the provided state into the model.
+    def load(self, state:Dict) -> None:
         raise NotImplementedError
 
 #purely random configuration sampling
@@ -128,6 +128,23 @@ class LatinHyperCube(Model):
 
         return vals 
 
+    #returns a dict defining the internal state of the model 
+    def state(self) -> Dict:
+        ret = dict() 
+        ret["configs"] = self.configs 
+        ret["confDef"] = pickle.dumps(self.configDef)
+        ret["bufferSize"] = self.bufferSize 
+        ret["rng"] = pickle.dumps(self.rng)
+        return ret
+
+    #loads the provided state into the model.
+    def load(self, state:Dict) -> None:
+        state = deepcopy(state) 
+        self.configs = state["configs"]
+        self.configDef = pickle.loads(state["confDef"])
+        self.bufferSize = state["bufferSize"] 
+        self.rng = pickle.loads(state["rng"])
+
 class _NeuralNetworkModel(torch.nn.Module):
     def __init__(self, inputSize:int, configDef:ConfigurationDefinition, cpu:bool=True):
         super(_NeuralNetworkModel, self).__init__()
@@ -177,18 +194,22 @@ class _NeuralNetworkModel(torch.nn.Module):
 
 
 class NeuralNetwork(Model):
+    
     def __init__(self, inputSize:int, configDef:ConfigurationDefinition, seed:int, cpu:bool=True):
         super(NeuralNetwork, self).__init__() 
+
+        self.origSeed = seed 
         self.rng = Random(seed) 
         #TODO: enable GPU accelerated training
         #self.device = torch.device("cuda:0" if torch.cuda.is_available() and not cpu else "cpu")
+        torch.cuda.manual_seed_all(self.rng.randint(0,4000000000))
         #A bunch of stuff to make sure pytorch is reproducible 
         #Commenting this out may improve performance in some cases 
         torch.set_deterministic(True)
-        os.environ['PYTHONHASHSEED'] = str(seed)
+        #os.environ['PYTHONHASHSEED'] = str(seed)
         setPythonSeed(seed)
         torch.manual_seed(self.rng.randint(0,4000000000))
-        torch.cuda.manual_seed_all(self.rng.randint(0,4000000000))
+        
         torch.backends.cudnn.deterministic = True
         torch.backends.cudnn.benchmark = False
         np.random.seed(self.rng.randint(0,4000000000))
@@ -209,10 +230,16 @@ class NeuralNetwork(Model):
     #train the model
     #TODO: something more efficient
     def _update(self, configs:ConfigurationDB) -> None:
+        #TODO???
+        torch.manual_seed(self.rng.randint(0,4000000000))
+        np.random.seed(self.rng.randint(0,4000000000))
+        setPythonSeed(self.rng.randint(0,4000000000))
+        #torch.cuda.manual_seed_all(self.rng.randint(0,4000000000))
+        #######
         examples = []
-        for prob in configs.records:
-            for rcrd in configs.records[prob]:
-                record = configs.records[prob][rcrd]
+
+        for problem in configs.problemGenerator():
+            for record in problem:
                 if record.desirable():
                     for run in record.getRuns():
                         examples.append(run) 
@@ -276,15 +303,17 @@ class NeuralNetwork(Model):
                     optimizer.zero_grad()
                     loss = None
 
-        #optimizer.step()
-        # optimizer.zero_grad()
-
-
         self.predictor.eval()
         
 
     #generate a config from the provided features
     def _generate(self, features:ndarray) -> dict:
+         #TODO???
+        torch.manual_seed(self.rng.randint(0,4000000000))
+        np.random.seed(self.rng.randint(0,4000000000))
+        setPythonSeed(self.rng.randint(0,4000000000))
+        #torch.cuda.manual_seed_all(self.rng.randint(0,4000000000))
+        #####
         dta = self.__cleanInput(np.asarray([features],dtype=np.float32))
         dta = torch.from_numpy(dta)
         #dta.to(self.device) 
@@ -304,6 +333,42 @@ class NeuralNetwork(Model):
                 ret[pred[0].name] = self.__predToCategory(pred[1][0], pred[0])
 
         return ret
+
+    #returns a dict defining the internal state of the model 
+    def state(self) -> Dict:
+        
+        state = dict() 
+        state["rng"] = pickle.dumps(self.rng)
+        #state["nnParams"] = pickle.dumps(self.predictor.state_dict()) 
+        state["batchSize"] = self.batchSize 
+        state["lr"] = self.lr
+        state["momentum"] = self.momentum 
+        state["epochs"] = self.epochs 
+        #state["optimizerParams"] = pickle.dumps(self.optimizer.state_dict()) 
+        state["origSeed"] = self.origSeed 
+        #state["predictor"] = pickle.dumps(self.predictor) 
+        #state["optimizer"] = pickle.dumps(self.optimizer)
+        nnStateBytes = BytesIO()
+        torch.save({'predictor':self.predictor.state_dict(), 'optimizer':self.optimizer.state_dict()}, nnStateBytes, pickle_module=pickle)
+        nnStateBytes.seek(0)
+        state["torchParams"] = pickle.dumps(nnStateBytes) 
+        
+        return state 
+
+    #loads the provided state into the model.
+    def load(self, state:Dict) -> None:
+        state = deepcopy(state)
+        self.rng = pickle.loads(state["rng"])
+        self.origSeed = state["origSeed"] 
+        self.batchSize = state["batchSize"]
+        self.lr = state["lr"] 
+        self.momentum = state["momentum"]
+        self.epochs = state["epochs"] 
+        
+        nnState = torch.load(pickle.loads(state["torchParams"])) 
+        self.predictor.load_state_dict(nnState["predictor"]) 
+        self.optimizer.load_state_dict(nnState["optimizer"])
+        self.predictor.eval()
 
     #TODO: update this to better handle nans, infs, large numbers, and potential roundoff errors
     def __cleanInput(self,x):
