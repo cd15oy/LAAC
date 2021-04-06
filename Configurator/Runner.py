@@ -99,8 +99,6 @@ class Runner:
                     stillRunning.append(x) 
             
             running = stillRunning
-            
-            time.sleep(0.05)
 
         return [x.pop(0) for x in ret] 
  

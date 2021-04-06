@@ -64,9 +64,9 @@ parameters =    {   #Each parameter to tune needs a definition in the paremters 
                             "name":"iterations",
                             "type":"integer",
                             "flag":"-i",
-                            "default":125,
-                            "lower":50,
-                            "upper":200
+                            "default":250,
+                            "lower":150,
+                            "upper":350
                         },
                         {
                             "name":"samples",
