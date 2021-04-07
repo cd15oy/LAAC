@@ -33,6 +33,7 @@ class Run:
         self.configurations = [] 
 
         self.performedAt = int(time.time()*1000000)
+        self.performedOnIteration = None
 
     #returns the quality of the best solution produced in this run 
     def quality(self) -> float:
