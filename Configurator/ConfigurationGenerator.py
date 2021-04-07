@@ -144,7 +144,7 @@ class RandomGenerator(ConfigurationGenerator):
             
 
     #should return a copy of the models internal state. Saving and restoring the state of the model should not impact the output of the model.
-    def getState(self) -> dict():
+    def getState(self) -> Dict:
         state = dict() 
         state["type"] = RandomGenerator 
         state["confDef"] = pickle.dumps(self.confDef) 
@@ -210,7 +210,6 @@ class AdaptiveGenerator(ConfigurationGenerator):
 
     #LatinHyperCube is used when no features are provided, since we have nothing to base feature selection on 
     def _generateWithoutFeatures(self) -> Tuple[str,dict]:
-        
         if len(self._starterConfigs) > 0 and self.rng.random() < self._informedPercentRnd:
             return "Informed", self.rng.choice(self._starterConfigs)
         else:
@@ -293,9 +292,11 @@ class AdaptiveGenerator(ConfigurationGenerator):
 
         self.training_history["history"].append(iterHist)
 
+        self._chooseNewInformedPercentRnd()
+
 
     #should return a copy of the models internal state. Saving and restoring the state of the model should not impact the output of the model.
-    def getState(self) -> dict():
+    def getState(self) -> Dict:
         state = dict()
         state["nn"] = self.nn.state()
         state["rnd"] = self.rndModel.state() 
@@ -305,6 +306,8 @@ class AdaptiveGenerator(ConfigurationGenerator):
         state["infPercVar"] = self.informedPercentVariance
         state["starterConfigs"] = self._starterConfigs 
         state["featureSize"] = self.featureSize
+        state["informedPercent"] = self._informedPercent
+        state["informedPercentRnd"] = self._informedPercentRnd
         state["confDef"] = pickle.dumps(self.confDef)
         state["type"] = AdaptiveGenerator
         return deepcopy(state)
@@ -322,14 +325,18 @@ class AdaptiveGenerator(ConfigurationGenerator):
 
         model.nn.load(state["nn"])
         model._starterConfigs = state["starterConfigs"]
+        model._informedPercent = state["informedPercent"]
 
         if seed is None:
             model.rndModel.load(state["rnd"])
             model.rng = pickle.loads(state["rng"]) 
+            model._informedPercentRnd = state["informedPercentRnd"]
+
 
         #Each "run" will load its own copy of the model, and thus use a semi-random value for informedPercentRnd
         #This should allow the percentage of predicted parameters to increase over time once the predicted parameters begin to perform well
-        model._chooseNewInformedPercentRnd()
+        if seed is not None:
+            model._chooseNewInformedPercentRnd()
 
         return model
 
