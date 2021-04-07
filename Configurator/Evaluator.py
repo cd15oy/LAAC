@@ -57,7 +57,7 @@ class SimpleEvaluator(Evaluator):
             records = []
             for record in problem:
                 runs = record.getRuns() 
-                quality = mean([x.configurations[-1].rawResult["solutions"][-1]["quality"] for x in runs])
+                quality = mean([x.quality() for x in runs])
                 records.append((quality, record))
             records.sort() 
             cutOff = records[int(len(records)*x)][0] 
