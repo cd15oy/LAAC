@@ -130,3 +130,6 @@ dmypy.json
 
 #our running DB
 *.sqlite3
+
+#model files 
+*.bin
