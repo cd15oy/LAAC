@@ -26,7 +26,7 @@ from Configurator.Problem import Instance
 from Configurator.TerminationCondition import TerminationCondition
 from Configurator.ConfigurationDefinition import Configuration
 from Configurator.Run import Run
-from Configurator.ConfigurationGenerator import ConfigurationGenerator, initModel
+from Configurator.ConfigurationGenerator import ConfigurationGenerator
 from random import Random
 from Configurator.Characterizer import Characterizer
 from Configurator.ProblemSuite import ProblemSuite
@@ -59,8 +59,7 @@ class Runner:
 
     #TODO: reruns should be update to be a list of configurations 
     #Performs numInstances runs each for numNewConfigs new configuration sequences and performance an additional run on a new instance for any runs in configsToReRun 
-    def schedule(self, numNewConfigs:int, numInstances:int, confSamplerState:dict, configsToReRun:List[Run] = None) -> List[Run]:
-        confSampler:ConfigurationGenerator = initModel(confSamplerState)
+    def schedule(self, numNewConfigs:int, numInstances:int, confSampler:ConfigurationGenerator, configsToReRun:List[Run] = None) -> List[Run]:
 
         configs = [(numInstances, confSampler.generate()) for x in range(numNewConfigs)]
 
@@ -75,7 +74,7 @@ class Runner:
 
         ret = [manager.list() for x in range(len(todo))] 
 
-        todo = [(inst, conf, self.characterizer, confSamplerState, self.terminationCondition, self.rng.randint(0,4000000000),i) for i,(inst,conf) in enumerate(todo)]
+        todo = [(inst, conf, self.characterizer, confSampler.getState(), self.terminationCondition, self.rng.randint(0,4000000000),i) for i,(inst,conf) in enumerate(todo)]
 
         todo = [Process(target=_algWrapper, args=(self.algorithm.run, x, ret[i])) for i,x in enumerate(todo)]
         running = []
