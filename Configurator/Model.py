@@ -153,16 +153,16 @@ class _NeuralNetworkModel(torch.nn.Module):
 
         self.input = torch.nn.Sequential(
                             torch.nn.Linear(inputSize, 500),
-                            torch.nn.Hardtanh(-1,1)
+                            torch.nn.ELU()
                         )
         
         self.features = torch.nn.Sequential(
-                            torch.nn.Linear(500, 300),
-                            torch.nn.Hardtanh(-1,1),
-                            torch.nn.Linear(300, 300),
-                            torch.nn.Hardtanh(-1,1),
-                            torch.nn.Linear(300, 500),
-                            torch.nn.Hardtanh(-1,1)
+                            torch.nn.Linear(500, 250),
+                            torch.nn.ELU(),
+                            torch.nn.Linear(250, 125),
+                            torch.nn.ELU(),
+                            torch.nn.Linear(125, 50),
+                            torch.nn.ELU()
                         )
 
         #construct regressors (and possibly classifiers) for each parameter to predict
@@ -171,14 +171,14 @@ class _NeuralNetworkModel(torch.nn.Module):
         for param in configDef.parameters:
             if param.type == "real" or param.type == "integer":
                 head = torch.nn.Sequential(
-                            torch.nn.Linear(500, 1),
-                            torch.nn.Hardtanh(-1,1)
+                            torch.nn.Linear(50, 1),
+                            torch.nn.Tanh()
                         )
                 criteria = torch.nn.MSELoss()
                 self.output.append((param, head, criteria))
             if param.type == "categorical":
                 head = torch.nn.Sequential(
-                            torch.nn.Linear(500, len(param.options))
+                            torch.nn.Linear(50, len(param.options))
                 )
                 criteria = torch.nn.CrossEntropyLoss() 
                 self.output.append((param, head, criteria))
@@ -220,11 +220,12 @@ class NeuralNetwork(Model):
 
         #TODO: make training paramters, network arch, etc configurable
         #num examples drawn from dataset
-        self.batchSize = 64
-        self.lr = 0.0001
-        self.momentum = 0.001
+        self.batchSize = 128
+        self.lr = 0.001
+        self.momentum = 0.1
         self.epochs = 5
         self.optimizer =torch.optim.RMSprop(self.predictor.parameters(), lr=self.lr, momentum=self.momentum)
+        self.history = [] 
          
 
     #train the model
@@ -238,11 +239,8 @@ class NeuralNetwork(Model):
         #######
         examples = []
 
-        for problem in configs.problemGenerator():
-            for record in problem:
-                if record.desirable():
-                    for run in record.getRuns():
-                        examples.append(run) 
+        for run in configs.getDesirables():
+            examples.append(run) 
         
         #sample desirable runs #TODO: use random.sample, and resample on each epoch , alternatively we can stick with choice, and replace epochs with k, 
         #it would be more fine grained control over how much training is done
@@ -266,6 +264,8 @@ class NeuralNetwork(Model):
         optimizer = self.optimizer 
         optimizer.zero_grad()
         loss = None
+
+        lossList = [] 
 
         for e in range(self.epochs):
             self.rng.shuffle(examples)
@@ -298,12 +298,15 @@ class NeuralNetwork(Model):
                 if (1+i) % self.batchSize == 0:
                     loss = loss/self.batchSize
                     loss.backward()
-                    print(loss.item())
+                    print(f"loss: {loss.item()}              \r", end="")
                     optimizer.step()
                     optimizer.zero_grad()
+                    lossList.append(loss.item()) 
                     loss = None
 
         self.predictor.eval()
+        print("")
+        self.history.append(lossList)
         
 
     #generate a config from the provided features
@@ -373,18 +376,17 @@ class NeuralNetwork(Model):
     #TODO: update this to better handle nans, infs, large numbers, and potential roundoff errors
     def __cleanInput(self,x):
 
-        featureArray = np.nan_to_num(x, nan=0, posinf=3.4028237e16, neginf=-3.4028237e16)
+        #featureArray = np.nan_to_num(x, nan=0, posinf=3.4028237e16, neginf=-3.4028237e16)
+        featureArray = np.nan_to_num(x, nan=0, posinf=0, neginf=0)
 
         featureArray = np.asarray(featureArray, np.float32)
     
         avg = np.mean(featureArray, axis=0)
         std = np.std(featureArray, axis=0) 
         std[std == 0] = 0.000001
-        avg = np.nan_to_num(avg)
+        avg = np.nan_to_num(avg, nan=0, posinf=0, neginf=0)
         featureArray = ((featureArray - avg)/std)
-        featureArray = np.nan_to_num(featureArray)
-
-        
+        featureArray = np.nan_to_num(featureArray, nan=0, posinf=0, neginf=0)
 
         return featureArray
 
