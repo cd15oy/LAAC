@@ -29,7 +29,7 @@ import json
 #Problems
 #We need to explicitly define all of the problems which LAAC will be configuring your algorithm for. 
 #For each of those problems we need a name, the flag to pass to the algorithm, and instance definitions 
-problems =  {"problems":
+problems =  {   "problems":
                 [                           #here we just need a list of problems, under the key "problems"
                     {   
                         "name":"f1",
@@ -50,7 +50,27 @@ problems =  {"problems":
                             "-pSeed $RANDOM"                   
                         ]
                     }
-                ]   
+                ],
+                "validation": #A list of problems to use for validation, these problems will not be used to train the internal model
+                # This could be the same problems as above, with different instances, or more interestingly a set of new but related problems 
+                # Since this is just an example file, we repeat the definitions above 
+                [
+                    {   
+                        "name":"f1",
+                        "flag":"-p f1",
+                        "instances": 
+                        [
+                            "-pSeed $RANDOM"     
+                        ]
+                    },
+                    {   "name":"f2",
+                        "flag":"-p f2",
+                        "instances": 
+                        [                
+                            "-pSeed $RANDOM"                   
+                        ]
+                    }
+                ]
             }
 
 #Configurations 
@@ -438,9 +458,16 @@ scenario =  {
                                 "strictConstraints": False,                     #Influences how strictly constraint expressions in the parameter definition are enforced
                                 "configsPerIteration":32,                       #The initial number of configurations to test per iteration of LAAC
                                 "threads":4,                                    #Threads to use for algorithm evaluations
-                                "dbfile":"resultsdb.sqlite3",                   #The file where tested configurations and their quality will be stored.
+                                "dbfile":"resultsdb",                           #The file where tested configurations and their quality will be stored. 
                                 "workInMemory":True,                            #If true results will be kept in memory at runtime, and written to disk at the end of the run
                                 "modelHistory":"modelHistory.json",             #A summary of the underlying model's performance
+                                "modelStoragePath":"models/",                   #A path at which to store model checkpoints
+                                "validate":True,                                #Whether or not to perform validation 
+                                "countValidationFEs":False,                     #Validation FEs are not counted towards the total since their result is independent of the training process 
+                                "modelType":"Adaptive",                     #The type of underlying model used for predicting parametes. <Adaptive or Random>
+                                "minInformedPercent":0.05,                  #Three parameters used by the adaptive model influencing how often it's predictions are made randomly
+                                "maxInformedPercent":0.95,                  
+                                "informedPercentVariance":0.1,
                                 "seed":12345                                    #Seed for reproducibility
                             }
             }
