@@ -269,40 +269,52 @@ class NeuralNetwork(Model):
 
         for e in range(self.epochs):
             self.rng.shuffle(examples)
-            for i, data in enumerate(examples):
+
+            for i in range(0, len(examples), self.batchSize):
+                data = examples[i:i+self.batchSize]
+
+                pattern = np.asarray([x[0] for x in data])
+                targets = [x[1] for x in data]
+            #for i, data in enumerate(examples):
                 #data = dataset.__get__(i) #enumerate(dataset):
-                pattern,target = data  
+                #pattern,target = data  
 
                 #calculated and propagate loss for all outputs
-                pattern = torch.from_numpy(pattern).unsqueeze(0) 
+                pattern = torch.from_numpy(pattern)
 
-                output = self.predictor(pattern.float())
-                for out in output:
-                    targetVal = target.values[out[0].name].value 
+                outputs = self.predictor(pattern.float())
 
-                    if out[0].type == "real" or out[0].type == "integer":
-                        targetVal = [self.__normalizeNumeric(targetVal, out[0])]
-                    elif out[0].type == "categorical":
-                        targetVal = self.__categoryToPred(targetVal, out[0])
+                for out in outputs:
+                    targetVals = [] 
 
-                    targetVal = torch.tensor(targetVal).unsqueeze(0)
+                    for config in targets:
+                        targetVal = config.values[out[0].name].value 
+
+                        if out[0].type == "real" or out[0].type == "integer":
+                            targetVal = [self.__normalizeNumeric(targetVal, out[0])]
+                        elif out[0].type == "categorical":
+                            targetVal = self.__categoryToPred(targetVal, out[0])
+
+                        targetVals.append(targetVal) 
+
+                    targetVals = torch.tensor(targetVals)
 
                     criteria = out[2]
                     if loss is None:
-                        loss = criteria(out[1], targetVal) 
+                        loss = criteria(out[1], targetVals) 
                     else:
-                        loss += criteria(out[1], targetVal)
+                        loss += criteria(out[1], targetVals)
                 
                 
 
-                if (1+i) % self.batchSize == 0:
-                    loss = loss/self.batchSize
-                    loss.backward()
-                    print(f"loss: {loss.item()}              \r", end="")
-                    optimizer.step()
-                    optimizer.zero_grad()
-                    lossList.append(loss.item()) 
-                    loss = None
+
+                loss = loss/len(data)
+                loss.backward()
+                print(f"loss: {loss.item()}              \r", end="")
+                optimizer.step()
+                optimizer.zero_grad()
+                lossList.append(loss.item()) 
+                loss = None
 
         self.predictor.eval()
         print("")
