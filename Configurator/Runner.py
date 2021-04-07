@@ -15,11 +15,6 @@ GNU General Public License for more details.
 You should have received a copy of the GNU Lesser General Public License
 along with this program.  If not, see <https://www.gnu.org/licenses/>.
 """
-
-
-
-#from threading import Thread
-import time
 from typing import Callable, List, Tuple
 from Configurator.Algorithm import Algorithm
 from Configurator.Problem import Instance
