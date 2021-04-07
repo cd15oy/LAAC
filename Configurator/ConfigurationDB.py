@@ -80,11 +80,19 @@ class ConfigurationDB:
         raise NotImplementedError
 
     #returns any records as new as or newer than time 
-    def getNew(self, time) -> Iterator[RecordTemplate]:
+    def getNew(self, time: int) -> Iterator[RecordTemplate]:
         raise NotImplementedError
 
     #returns a generator of generators, each generating all records for a specifc problem 
     def problemGenerator(self) -> Iterator[Iterator[RecordTemplate]]:
+        raise NotImplementedError
+
+    #Backup this DB to the specified PATH
+    def backup(self, path:str) -> None:
+        raise NotImplementedError
+
+    #close the db
+    def close(self) -> None:
         raise NotImplementedError
     
 """
@@ -300,4 +308,18 @@ class sqlite3ConfigurationDB(ConfigurationDB):
             yield sqlite3Record(row[0], row[1], self.db) 
 
         
+    #Backup this DB to the specified PATH
+    def backup(self, path:str) -> None:
+        def progress(status, remaining, total):
+            print(f'{remaining} of {total} pages remaining.', end="")
+            print("\r", end="")
+        bkup = sqlite3.connect(path) 
+        print("Writing results")
+        with bkup:
+            self.db.backup(bkup, pages=1, progress=progress)
+        bkup.close()
+        print("") 
 
+    #close the db
+    def close(self) -> None:
+        self.db.close()
