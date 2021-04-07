@@ -432,12 +432,15 @@ scenario =  {
                                 "runFELimit": 5000,                            #The maximum number of function evaluations which can be consumed by a run of your algorithm
                                 "totalFELimit": 1000000,                        #The maximum number of FEs which can be consumed by LAAC 
                                 "minRunsPerConfig":1,                           #The minimum number of runs to consider when evaluating a configuration 
-                                "maxRunsPerConfig":30,                      #The maximum number of runs to consider when evaluating a configuration 
-                                "targetAlgorithm":"python3 target-algorithm.py",#The call to run the target algorithm 
+                                "maxRunsPerConfig":30,                          #The maximum number of runs to consider when evaluating a configuration 
+                                "targetAlgorithm":"python3 target-algorithm.py", #The call to run the target algorithm 
                                 "staticArgs":"-d 20",                            #Arguments to be provided to every algorithm call, constant settings  
                                 "strictConstraints": False,                     #Influences how strictly constraint expressions in the parameter definition are enforced
-                                "configsPerIteration":32,                      #The initial number of configurations to test per iteration of LAAC
+                                "configsPerIteration":32,                       #The initial number of configurations to test per iteration of LAAC
                                 "threads":4,                                    #Threads to use for algorithm evaluations
+                                "dbfile":"resultsdb.sqlite3",                   #The file where tested configurations and their quality will be stored.
+                                "workInMemory":True,                            #If true results will be kept in memory at runtime, and written to disk at the end of the run
+                                "modelHistory":"modelHistory.json",             #A summary of the underlying model's performance
                                 "seed":12345                                    #Seed for reproducibility
                             }
             }
