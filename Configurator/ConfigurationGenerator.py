@@ -19,6 +19,7 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 import pickle
 from random import Random
+from statistics import mean
 from typing import Dict, Tuple
 from Configurator.ConfigurationDB import ConfigurationDB
 from Configurator.ConfigurationDefinition import ConfigurationDefinition,Configuration
@@ -86,12 +87,16 @@ class ConfigurationGenerator:
         return config
 
     #Should return a copy of the models internal state. Saving and restoring the state of the model should not impact the output of the model.
-    def getState(self) -> dict():
+    def getState(self) -> Dict:
         raise NotImplementedError
 
     #Should return a new ConfigurationGenerator initialized with the provided state. Saving and restoring the state of the model should not impact the output of the model.
     @classmethod
     def loadState(cls, state:Dict, seed:int = None) -> None:
+        raise NotImplementedError
+
+    #produces a dict describing the training history of the model 
+    def history(self) -> Dict:
         raise NotImplementedError
 
 """
@@ -102,6 +107,7 @@ class RandomGenerator(ConfigurationGenerator):
         super(RandomGenerator,self).__init__(confDef) 
         self.confDef = confDef
         self.model = LatinHyperCube(1000, confDef, seed) 
+        self.training_history = {"history":[]}
 
     #LatinHyperCube ignores features entirely, its a random sampler
     def _generateWithoutFeatures(self) -> Tuple[str,dict]:
@@ -113,7 +119,29 @@ class RandomGenerator(ConfigurationGenerator):
 
     #nothing to do here, this is a random sampler
     def _update(self, confDB:ConfigurationDB) -> None:
-        pass 
+        iterHist = dict()
+        probQuality = dict() 
+        for run in confDB.getDesirables():
+            prob = run.instance.problem 
+            if prob not in probQuality:
+                probQuality[prob] = [] 
+            
+            probQuality[prob].append(run.quality())
+
+        bestQual = dict()
+        aveQual = dict()
+        for prob in probQuality:
+            bestQual[prob] = min(probQuality[prob])
+            aveQual[prob] = mean(probQuality[prob])
+
+        iterHist["bestQualities"] = bestQual 
+        iterHist["aveQualities"] = aveQual
+
+        iterHist["informedPercent"] = 0
+        iterHist["loss"] = []
+
+        self.training_history["history"].append(iterHist)
+            
 
     #should return a copy of the models internal state. Saving and restoring the state of the model should not impact the output of the model.
     def getState(self) -> dict():
@@ -138,6 +166,10 @@ class RandomGenerator(ConfigurationGenerator):
             model.model.load(state["state"])
 
         return model 
+
+    #produces a dict describing the training history of the model 
+    def history(self) -> Dict:
+        return self.training_history
 
 """
 An adaptive ConfigurationGenerator. This implementation attempts to balance random sampling (for exploration) with features predicted via neural network. The proportions of randomly sampled parameters vs predicted paramters are determined automatically based on the quality of previously produced configurations.
@@ -166,6 +198,8 @@ class AdaptiveGenerator(ConfigurationGenerator):
         self._chooseNewInformedPercentRnd()
 
         self._starterConfigs = [] #Will contain a list of initial configurations which previous led to desirable runs 
+
+        self.training_history = {"history":[]}
 
     def _chooseNewInformedPercentRnd(self):
         self._informedPercentRnd = self._informedPercent + self.rng.normalvariate(0, self.informedPercentVariance)
@@ -209,9 +243,11 @@ class AdaptiveGenerator(ConfigurationGenerator):
 
     #Train the model, update informedPercent and period 
     def _update(self, confDB:ConfigurationDB) -> None:
+        iterHist = dict() 
+
         self.nn.update(confDB) #Train the network 
 
-        rcrdGen = confDB.recordGenerator() 
+        iterHist["loss"] = self.nn.history[-1] 
 
         observedInformedConfigs = 0
         observedConfigs = 0 
@@ -221,17 +257,30 @@ class AdaptiveGenerator(ConfigurationGenerator):
 
         del self._starterConfigs 
         self._starterConfigs = [] 
-        for rcrd in rcrdGen:
-            if rcrd.desirable():
-                runs = rcrd.getRuns()
 
-                for run in runs:
-                    self._starterConfigs.append(deepcopy(run.configurations[0]._origDict))
+        probQuality = dict() 
+        for run in confDB.getDesirables():
+            self._starterConfigs.append(deepcopy(run.configurations[0]._origDict))
 
-                    observedConfigs += len(run.configurations)
-                    for conf in run.configurations:
-                        if conf.generationMethod == "Informed":
-                            observedInformedConfigs += 1 
+            observedConfigs += len(run.configurations)
+            for conf in run.configurations:
+                if conf.generationMethod == "Informed":
+                    observedInformedConfigs += 1 
+
+            prob = run.instance.problem 
+            if prob not in probQuality:
+                probQuality[prob] = [] 
+            
+            probQuality[prob].append(run.quality())
+
+        bestQual = dict()
+        aveQual = dict()
+        for prob in probQuality:
+            bestQual[prob] = min(probQuality[prob])
+            aveQual[prob] = mean(probQuality[prob])
+
+        iterHist["bestQualities"] = bestQual 
+        iterHist["aveQualities"] = aveQual
 
         #TODO: non-desirable configs should be pruned here to save on space 
 
@@ -239,6 +288,10 @@ class AdaptiveGenerator(ConfigurationGenerator):
 
         self._informedPercent = aveInformedConfig #On average, the percentage of predictions which should be "informed" are chosen based on the percentage of informed predictions among the desirable configurations 
         print("Informed Percent: {}".format(self._informedPercent))
+
+        iterHist["informedPercent"] = self._informedPercent 
+
+        self.training_history["history"].append(iterHist)
 
 
     #should return a copy of the models internal state. Saving and restoring the state of the model should not impact the output of the model.
@@ -279,3 +332,7 @@ class AdaptiveGenerator(ConfigurationGenerator):
         model._chooseNewInformedPercentRnd()
 
         return model
+
+    #produces a dict describing the training history of the model 
+    def history(self) -> Dict:
+        return self.training_history
