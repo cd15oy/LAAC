@@ -16,18 +16,13 @@ You should have received a copy of the GNU Lesser General Public License
 along with this program.  If not, see <https://www.gnu.org/licenses/>.
 """
 
+
 #TODO: Final Prototype:
 #### Update the config DB to avoid the need to rewalk the entire DB over and over and over again
 ####    also to drop unneeded inforation, ex the solutions/states and save space
 #### Provide examples as a batch to torch to better use CPUs
-#### validation/applicaitons mode ->  ability to run more configs/sequences using a previously trainied model WITHOUT any addition training. Basically, we need the ability to skip the training steps, and the desirable/rerun flagging. Just want to give the system problems + a trained model and watch it do runs 
-#### Add logging, which writes run stats to the ConfigDB sqlite3 file
-####    or possible a more portable JSON
-#### Write trained models to disk for later use
 #### update PSO implementation to produce needed output 
 #### collect runs to compare random vs adaptive
-
-#see the copy of Models.py on frank for some different tested NN params
 
 """
 The main file. This file can be run to configure your algorithm after valid LAAC settings files have been defined. See parameters.py 
@@ -46,7 +41,9 @@ from Configurator.TerminationCondition import FELimit
 import json
 import argparse
 from random import Random, randint
-from typing import List
+from typing import List 
+from pathlib import Path
+import pickle
 
 #Counts the total FEs consumed by a list of runs 
 def countFEs(runs:List[Run]) -> int:
@@ -98,6 +95,16 @@ if __name__ == "__main__":
     DBFILE = scenario["dbfile"]
     WORKINMEMORY = scenario["workInMemory"]
     MODELHISTORYFILE = scenario["modelHistory"]
+    MODELSTORAGEPATH = scenario["modelStoragePath"]
+    VALIDATE = scenario["validate"]
+    COUNTVALIDATIONFES = scenario["countValidationFEs"]
+    MODELTYPE = scenario["modelType"] 
+    MININFORMEDPERCENT = scenario["minInformedPercent"]
+    MAXINFORMEDPERCENT = scenario["maxInformedPercent"]
+    INFOMREDPERCENTVARIANCE = scenario["informedPercentVariance"]
+
+    #ensure the model storage location exists 
+    Path(MODELSTORAGEPATH).mkdir(parents=True, exist_ok=True)
 
     #TODO: scenario should have a flag to choose between the adaptive and random generators
 
@@ -110,23 +117,35 @@ if __name__ == "__main__":
     configurationDefinition = ConfigurationDefinition(parameters) 
 
     suite = ProblemSuite(problems, rng.randint(0,4000000000)) 
+    validationSuite = ProblemSuite({"problems":problems["validation"]}, rng.randint(0,4000000000))
 
     characterizer = Characterizer()
     
-
-    generatorType = AdaptiveGenerator 
-
+    if MODELTYPE == "Adaptive":
+        generatorType = AdaptiveGenerator
+        model = AdaptiveGenerator(159, configurationDefinition, seed=rng.randint(0,4000000000), minInformedPercent=MININFORMEDPERCENT, maxInformedPercent=MAXINFORMEDPERCENT, informedPercentVariance=INFOMREDPERCENTVARIANCE)
+    elif MODELTYPE == "Random":
+        generatorType = RandomGenerator 
+        model = RandomGenerator(configurationDefinition, rng.randint(0,4000000000))
+    else:
+        raise Exception("Model type not recognized.")
+    
     #TODO: figre out how Configure should be made aware of the problem dimensionality 
     #also, what about configuring for problems of different dimensionality simutaneously?
-    model = generatorType(159, configurationDefinition, seed=rng.randint(0,4000000000))
+    
     #model = RandomGenerator(configurationDefinition, rng.randint(0,4000000000))
     
     runner = RandomInstanceRunner(suite, characterizer, termination, rng.randint(0,4000000000), alg, scenario["threads"]) 
+    validationRunner = RandomInstanceRunner(validationSuite, characterizer, termination, rng.randint(0,4000000000), alg, scenario["threads"])
 
     if WORKINMEMORY:
         configDB = sqlite3ConfigurationDB(path=":memory:", initialize=True)
+        validationConfigDB = sqlite3ConfigurationDB(path=":memory:", initialize=True) 
     else:
-        configDB = sqlite3ConfigurationDB(path=DBFILE, initialize=True) 
+        configDB = sqlite3ConfigurationDB(path=f"{DBFILE}.training.sqlite3", initialize=True)
+        validationConfigDB = sqlite3ConfigurationDB(path=f"{DBFILE}.validation.sqlite3", initialize=True) 
+
+    
 
     #TODO: eventually evaluator parameter need to be in the scenario file
     evaluator = SimpleEvaluator(0.25, False, scenario["maxRunsPerConfig"])
@@ -136,12 +155,14 @@ if __name__ == "__main__":
     configsPerIteration = scenario["configsPerIteration"] 
     minRunsPerConfig = scenario["minRunsPerConfig"]     
 
-    newRuns = runner.schedule(configsPerIteration, minRunsPerConfig, model.getState()) 
+    newRuns = runner.schedule(configsPerIteration, minRunsPerConfig, model) 
     totalFEsConsumed = countFEs(newRuns)
     for run in newRuns:
+        run.performedOnIteration = 0
         configDB.addRun(run)
 
 
+    iteration = 1
     best = dict() 
     while totalFEsConsumed < FELIMIT:
         # for getting some stats about memory usage 
@@ -157,21 +178,36 @@ if __name__ == "__main__":
 
         #TODO: limit the total runs per iteration, and/or the total new configs vs the total reuns? adapt the limits according to criteria or iteration?
         toReRun = configDB.getReRuns() 
-        newRuns = runner.schedule(configsPerIteration, minRunsPerConfig, model.getState())
+        newRuns = runner.schedule(configsPerIteration, minRunsPerConfig, model)
         totalFEsConsumed += countFEs(newRuns)
         for run in newRuns:
+            run.performedOnIteration = iteration
             configDB.addRun(run)
 
         summary = model.history()["history"][-1] 
         print(summary)
 
+        #Write the models current state to disk
+        with open(f"{MODELSTORAGEPATH}/model_{iteration}.bin", 'wb') as outF:
+            outF.write(pickle.dumps(model.getState()))
+
+        if VALIDATE:
+            validationRuns = validationRunner.schedule(configsPerIteration, minRunsPerConfig, model)
+            if COUNTVALIDATIONFES:
+                totalFEsConsumed += countFEs(validationRuns) 
+            for run in validationRuns:
+                run.performedOnIteration = iteration
+                validationConfigDB.addRun(run) 
+        
+        iteration += 1
+
     print("FE LIMIT PASSED")
 
     if WORKINMEMORY: #We need to write the db from memory out to disk 
-        configDB.backup(DBFILE)
+        configDB.backup(f"{DBFILE}.training.sqlite3")
+        validationConfigDB.backup(f"{DBFILE}.validation.sqlite3")
 
     with open(MODELHISTORYFILE, 'w') as outF:
         outF.write(json.dumps(model.history(),indent=2))
 
-    #TODO output results in some format
 
