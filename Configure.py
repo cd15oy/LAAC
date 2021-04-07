@@ -19,10 +19,11 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 #TODO: Final Prototype:
 #### Update the config DB to avoid the need to rewalk the entire DB over and over and over again
 ####    also to drop unneeded inforation, ex the solutions/states and save space
-#### Update the config DB to use sqlite3, and store results on disk  
+#### Provide examples as a batch to torch to better use CPUs
 #### validation/applicaitons mode ->  ability to run more configs/sequences using a previously trainied model WITHOUT any addition training. Basically, we need the ability to skip the training steps, and the desirable/rerun flagging. Just want to give the system problems + a trained model and watch it do runs 
 #### Add logging, which writes run stats to the ConfigDB sqlite3 file
 ####    or possible a more portable JSON
+#### Write trained models to disk for later use
 #### update PSO implementation to produce needed output 
 #### collect runs to compare random vs adaptive
 
@@ -94,6 +95,10 @@ if __name__ == "__main__":
     else:
         seed = scenario["seed"]
 
+    DBFILE = scenario["dbfile"]
+    WORKINMEMORY = scenario["workInMemory"]
+    MODELHISTORYFILE = scenario["modelHistory"]
+
     #TODO: scenario should have a flag to choose between the adaptive and random generators
 
     rng = Random(seed)
@@ -118,7 +123,10 @@ if __name__ == "__main__":
     
     runner = RandomInstanceRunner(suite, characterizer, termination, rng.randint(0,4000000000), alg, scenario["threads"]) 
 
-    configDB = sqlite3ConfigurationDB(initialize=True) 
+    if WORKINMEMORY:
+        configDB = sqlite3ConfigurationDB(path=":memory:", initialize=True)
+    else:
+        configDB = sqlite3ConfigurationDB(path=DBFILE, initialize=True) 
 
     #TODO: eventually evaluator parameter need to be in the scenario file
     evaluator = SimpleEvaluator(0.25, False, scenario["maxRunsPerConfig"])
@@ -130,6 +138,8 @@ if __name__ == "__main__":
 
     newRuns = runner.schedule(configsPerIteration, minRunsPerConfig, model.getState()) 
     totalFEsConsumed = countFEs(newRuns)
+    for run in newRuns:
+        configDB.addRun(run)
 
 
     best = dict() 
@@ -141,9 +151,6 @@ if __name__ == "__main__":
         
         print("Progress: {}/{}".format(totalFEsConsumed,FELIMIT))
 
-        for run in newRuns:
-            configDB.addRun(run)
-
         evaluator.evaluate(configDB)
 
         model.update(configDB)
@@ -152,23 +159,19 @@ if __name__ == "__main__":
         toReRun = configDB.getReRuns() 
         newRuns = runner.schedule(configsPerIteration, minRunsPerConfig, model.getState())
         totalFEsConsumed += countFEs(newRuns)
+        for run in newRuns:
+            configDB.addRun(run)
 
-        for problem in configDB.problemGenerator():
-            for record in problem:
-                prob = record.problem 
-
-                if prob not in best:
-                    best[prob] = float('inf')
-                if record.desirable():
-                    quality = []
-                    for run in record.getRuns():
-                        quality.append(run.configurations[-1].rawResult["solutions"][-1]["quality"]) 
-                    from statistics import mean
-                    quality = mean(quality)
-                    if quality < best[prob]:
-                        best[prob] = quality 
-        print(best)
+        summary = model.history()["history"][-1] 
+        print(summary)
 
     print("FE LIMIT PASSED")
+
+    if WORKINMEMORY: #We need to write the db from memory out to disk 
+        configDB.backup(DBFILE)
+
+    with open(MODELHISTORYFILE, 'w') as outF:
+        outF.write(json.dumps(model.history(),indent=2))
+
     #TODO output results in some format
 
