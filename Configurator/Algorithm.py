@@ -116,6 +116,9 @@ class Algorithm:
                 
                 # #Finish populating the Configuration with data
                 conf.features = characterizer.characterize(result, characterizeSeed)
+                #TODO: remove this line 
+                del result["state"] #significantly reduces the size of the DB -> testing to see how much it speed walks/checks of stored runs
+                ##
                 conf.rawResult = result
                 conf.seed = seed 
                 conf.threadID = threadID 
