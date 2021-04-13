@@ -84,3 +84,21 @@ class SimpleEvaluator(Evaluator):
                         record.reRun(True)
                     else:
                         record.reRun(False)
+
+#TODO: need a new/better evaluator
+#new version should only consider the runs associated with a particular initial config 
+#the top X percent runs of that inital config should be considered desirable 
+#ie the goal of the model is, given some set of features, predict a new config which continues the search in the best possible manner
+#so even if the initial config was bad, we hope the model can make the best of it 
+#this has several benefits, the main one will be that the bottle neck during the evaluation step is removed. The evaluator only needs to consider new records, and any records that have changed, rather than walk EVERY run of EVERY problem in the DB. 
+#This approach also should help relieve any issues resulting from minimal data,
+####ie the top X records per problem really only provides usefull information when you have a few hundred records per problem, which means theres a huge overhead, delay while waiting for the inital data, a very long wait before seeing any results at all 
+######## ex if the inital collection of data is too small, ie 1 or 2 records per problem, then the training data is small, the model may over fit really early
+####with this approach 5 runs of a handful of configs for each problem leads to a large early collection of data so training can begin with less risk of overfitting 
+#This dovetails well with the model (no feature) config selection mechanism, which randomly selects a previously used desirable initial config 
+####The model initial config selection code can be updated to prefer configs/records whose average performanc is strong, which will over time bias the search toward strong solutions
+########Which should balance out the potential downfall of this evaluator appprach 
+########ie it could be argued that this approach attempts to train the model to make the best of what it's given (which may be bad anyway), whereas the old approach was focused on obtain good performance when good inputs were provided 
+########### the thing is, the seed configs were still mostly random in the old appraoch, with some bias toward the good configs found 
+########### so technically the data we were training the model on, was not very representative of the data it was being given in pratice 
+############### anywho, neither approach is perfect, but the new one resolves some of the exists issues/bottle necks, and we can make a convincing argument that it makes sense.
