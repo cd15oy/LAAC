@@ -257,6 +257,8 @@ class AdaptiveGenerator(ConfigurationGenerator):
         del self._starterConfigs 
         self._starterConfigs = [] 
 
+        #TODO: once the new evaluator is done (and getDesirables is updated) consider modifying this to grab a sample of desirable runs, then only store the top such and such percent initial configs per problem 
+        #that way the generators informed predictions will represent strong initial configs, rather than initial configs the model performed well at improving upon
         probQuality = dict() 
         for run in confDB.getDesirables():
             self._starterConfigs.append(deepcopy(run.configurations[0]._origDict))
