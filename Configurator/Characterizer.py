@@ -20,7 +20,9 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 Responsible for producing a feature vector from a sequence of solutions.
 """
 
-#TODO: add quality RoC, and other quality based features?
+#TODO: add quality RoC, and final quality 
+#TODO: fix dispersion to 5 sets of summary stats calcualted for the 100 best sols from the sample 
+#TODO: does that change the nearest neighbor calcualtsion?  if so update thesis write up
 
 from ctypes import POINTER, Structure, byref, c_long, cdll,c_double,c_int,c_long
 import numpy as np 
