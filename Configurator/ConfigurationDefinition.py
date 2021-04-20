@@ -62,7 +62,7 @@ class Constraint:
         self.operators = {ast.Add: op.add, ast.Sub: op.sub, ast.Mult: op.mul,
             ast.Div: op.truediv, ast.Lt: op.lt, ast.Gt:op.gt, ast.LtE:op.le, 
             ast.GtE:op.ge, ast.Eq:op.eq, ast.NotEq:op.ne, ast.And:op.and_, ast.Or:op.or_,
-            ast.USub:op.neg}
+            ast.USub:op.neg, ast.Pow:op.pow}
 
     def test(self, config:"Configuration") -> bool:
         expr = self.expression 
