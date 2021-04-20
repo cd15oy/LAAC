@@ -63,28 +63,31 @@ class Algorithm:
 
             #If the configuration is invalid, and LAAC should not evaluate invalid configs 
             if not conf.valid and not self.evaluateInvalid:
-                #TODO need to update evaluator (and probably others) to handle dummy records, making decisions when invalid configurations are involved 
-                print("I shouldn't see this")
-                #construct a dummy record with None features, solutions, etc 
-                features = None  #no features 
-                result =    {
-                                "solutions":None,
-                                    #[{"solution":None,"quality":float('inf')}],
-                                "state":None,
-                                    #[[{"solution":None,"quality":float('inf')},{"solution":None,"quality":float('inf')},{"solution":None,"quality":float('inf')},{"solution":None,"quality":float('inf')},{"solution":None,"quality":float('inf')}]],
-                                "evaluationsConsumed":0,
-                                "algorithmState":restore,
-                                "time":0
-                            }
-                conf.rawResult = result
-                conf.seed = 0
-                conf.threadID = threadID 
+                #Generate a new configuration and attempt to continue, here we don't run invalid configs 
+                conf = model.generate(None)
 
-                # #Store the finished configuration in the run 
-                theRun.configurations.append(conf)
+                # #TODO need to update evaluator (and probably others) to handle dummy records, making decisions when invalid configurations are involved 
+                # print("I shouldn't see this") #TODO: this is a priority now
+                # #construct a dummy record with None features, solutions, etc 
+                # features = None  #no features 
+                # result =    {
+                #                 "solutions":None,
+                #                     #[{"solution":None,"quality":float('inf')}],
+                #                 "state":None,
+                #                     #[[{"solution":None,"quality":float('inf')},{"solution":None,"quality":float('inf')},{"solution":None,"quality":float('inf')},{"solution":None,"quality":float('inf')},{"solution":None,"quality":float('inf')}]],
+                #                 "evaluationsConsumed":0,
+                #                 "algorithmState":restore,
+                #                 "time":0
+                #             }
+                # conf.rawResult = result
+                # conf.seed = 0
+                # conf.threadID = threadID 
 
-                # #Generate the next configuration
-                conf = model.generate(features)
+                # # #Store the finished configuration in the run 
+                # theRun.configurations.append(conf)
+
+                # # generate the next configuration
+                # conf = model.generate(None)
 
             else:
                 seed = rng.randint(0,4000000000) #A seed for the execution of the target algorithm
@@ -130,8 +133,8 @@ class Algorithm:
                 # #Generate the next configuration
                 conf = model.generate(conf.features)
 
-            #ensure we pick up where the algorithm left off
-            restore = result["algorithmState"]
+                #ensure we pick up where the algorithm left off
+                restore = result["algorithmState"]
 
         return theRun
 
