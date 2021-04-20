@@ -18,6 +18,7 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 from statistics import mean 
 from Configurator.ConfigurationDB import ConfigurationDB
+from time import time
 
 """
 Responsible for examining and providing a relative evaluation of the configurations in a ConfigurationDB. Configurations representing desirable performance will be flagged. Some configurations may also be flagged to indicate more information is required. 
@@ -59,7 +60,7 @@ class SimpleEvaluator(Evaluator):
                 runs = record.getRuns() 
                 quality = mean([x.quality() for x in runs])
                 records.append((quality, record))
-            records.sort() 
+            records.sort(key=lambda x : x[0]) 
             cutOff = records[int(len(records)*x)][0] 
 
             for record in records:
