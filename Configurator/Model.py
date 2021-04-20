@@ -220,11 +220,16 @@ class NeuralNetwork(Model):
 
         #TODO: make training paramters, network arch, etc configurable
         #num examples drawn from dataset
-        self.batchSize = 128
-        self.lr = 0.001
-        self.momentum = 0.1
-        self.epochs = 5
-        self.optimizer =torch.optim.RMSprop(self.predictor.parameters(), lr=self.lr, momentum=self.momentum)
+        # self.batchSize = 128
+        # self.lr = 0.001
+        # self.momentum = 0.1
+        # self.epochs = 5
+        # self.optimizer =torch.optim.RMSprop(self.predictor.parameters(), lr=self.lr, momentum=self.momentum)
+        self.batchSize = 32
+        self.lr = 0.00000001
+        self.momentum = 0.000001
+        self.epochs = 20
+        self.optimizer =torch.optim.SGD(self.predictor.parameters(), lr=self.lr, momentum=self.momentum)
         self.history = [] 
          
 
@@ -254,9 +259,8 @@ class NeuralNetwork(Model):
                 featureArray.append(run.configurations[i].features)
                 configs.append(c)
     
-        
         featureArray = self.__cleanInput(featureArray)
-        
+
         examples = [x for x in zip(featureArray,configs)]
   
         self.predictor.train()
