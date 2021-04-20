@@ -314,9 +314,13 @@ def fit(vals):
     
     X = np.array([x for x in range(0,len(Y))],dtype=np.float64)
     
-
+    #we need at MINIMUM 3 values to attempt curve fitting 
+    if len(Y) <= 3:
+        return [float('inf'), float('inf'), 0, float('inf')]
+    
     c = Y[0] #Bossman statically defined the y-intercept of the first equation to the first datavalue 
     #it makes sense, in this case the first value is always found at x=0 
+    
 
     #So we define a separate function with fixed c to optimize 
     def toOptimize(x, m1, m2, t):
