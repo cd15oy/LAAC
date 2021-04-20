@@ -49,7 +49,11 @@ class Characteristics(Structure):
         ("gBestyDist", POINTER(c_double))
     ]
 
-_characterizeLib = cdll.LoadLibrary('FLA/Characterize.so')
+pth = sys.argv[0] 
+loc = pth.rfind("/") 
+pth = pth[:loc]
+
+_characterizeLib = cdll.LoadLibrary(f'{pth}/FLA/Characterize.so')
 
 class Characterizer:
     def __init__(self):
