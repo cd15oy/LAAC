@@ -273,6 +273,9 @@ class sqlite3ConfigurationDB(ConfigurationDB):
         ids = [row[0] for row in cur] 
 
         if limit is not None:
+            #prevent too large of sample
+            if limit > len(ids):
+                limit = len(ids)
             ids = self.rng.sample(ids, limit)
 
         idList = "(" + ",".join([str(x) for x in ids]) + ")"

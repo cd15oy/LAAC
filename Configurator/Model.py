@@ -233,6 +233,25 @@ class NeuralNetwork(Model):
         self.history = [] 
          
 
+    def _getExamples(self,configs:ConfigurationDB, k):
+        examples = []
+        for run in configs.getDesirables(k):
+            examples.append(run) 
+        
+        #convert the runs into training examples 
+        featureArray = []
+        confs = [] 
+        for run in examples:
+            for i,c in enumerate(run.configurations[1:]):
+                featureArray.append(run.configurations[i].features)
+                confs.append(c)
+    
+        featureArray = self.__cleanInput(featureArray)
+
+        examples = [x for x in zip(featureArray,confs)]
+
+        return examples
+
     #train the model
     #TODO: something more efficient
     def _update(self, configs:ConfigurationDB) -> None:
@@ -242,26 +261,9 @@ class NeuralNetwork(Model):
         setPythonSeed(self.rng.randint(0,4000000000))
         #torch.cuda.manual_seed_all(self.rng.randint(0,4000000000))
         #######
-        examples = []
-
-        for run in configs.getDesirables():
-            examples.append(run) 
         
-        #sample desirable runs #TODO: use random.sample, and resample on each epoch , alternatively we can stick with choice, and replace epochs with k, 
-        #it would be more fine grained control over how much training is done
-        examples = self.rng.choices(examples, k=128)
-        
-        #convert the runs into training examples 
-        featureArray = []
-        configs = [] 
-        for run in examples:
-            for i,c in enumerate(run.configurations[1:]):
-                featureArray.append(run.configurations[i].features)
-                configs.append(c)
-    
-        featureArray = self.__cleanInput(featureArray)
 
-        examples = [x for x in zip(featureArray,configs)]
+        
   
         self.predictor.train()
 
@@ -271,17 +273,18 @@ class NeuralNetwork(Model):
 
         lossList = [] 
 
+        MAXEXAMPLES = 128
+
         for e in range(self.epochs):
-            self.rng.shuffle(examples)
+
+            
+            examples = self._getExamples(configs, MAXEXAMPLES)
 
             for i in range(0, len(examples), self.batchSize):
                 data = examples[i:i+self.batchSize]
 
                 pattern = np.asarray([x[0] for x in data])
                 targets = [x[1] for x in data]
-            #for i, data in enumerate(examples):
-                #data = dataset.__get__(i) #enumerate(dataset):
-                #pattern,target = data  
 
                 #calculated and propagate loss for all outputs
                 pattern = torch.from_numpy(pattern)
