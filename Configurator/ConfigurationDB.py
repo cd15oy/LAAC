@@ -25,6 +25,7 @@ from typing import Iterator, List, Union
 from Configurator.Run import Run
 import sqlite3
 import pickle
+from random import Random
 
 """
 Wraps the information we have about a particular sequence of configurations 
@@ -178,7 +179,8 @@ A configuration DB backed by sqlite 3.
 class sqlite3ConfigurationDB(ConfigurationDB):
     
     #Connect to the DB found at path. If initialize is true, a fresh DB will be initialized.
-    def __init__(self, path:str=":memory:", initialize:bool=False):
+    def __init__(self, path:str=":memory:", initialize:bool=False, seed:int=None):
+        self.rng = Random(seed)
         self.db = sqlite3.connect(path)
         cur = self.db.cursor()
         
@@ -257,17 +259,29 @@ class sqlite3ConfigurationDB(ConfigurationDB):
         
     #TODO: this should be updated to accept a param for how many, and return a random selection 
     #see google for efficient ways to grab random or randomish selections from tables in sqlite
+    
     #produces the current desirable runs 
-    def getDesirables(self) -> List[Run]:
+    #limit gives the max number of results which should be returned. If there are more than limit results available, a random selection will be returned 
+    def getDesirables(self, limit:int=None) -> List[Run]:
         cur = self.db.cursor()
 
-        #grab an example run from each record flagged for rerun
-        cur.execute("   SELECT run \
-                        FROM    runs    INNER JOIN      (SELECT id \
-                                                        FROM records \
-                                                        WHERE desirable != 0) as RCRDS \
-                                        ON runs.record = RCRDS.id ")
+        
+        cur.execute("SELECT id \
+                    FROM records \
+                    WHERE desirable != 0") 
 
+        ids = [row[0] for row in cur] 
+
+        if limit is not None:
+            ids = self.rng.sample(ids, limit)
+
+        idList = "(" + ",".join([str(x) for x in ids]) + ")"
+
+        #grab an example run from each record flagged for rerun
+        cur.execute(f"   SELECT  run \
+                        FROM    runs \
+                        WHERE record IN {idList}")
+                        
         ret = [] 
         for row in cur:
             run = pickle.loads(row[0]) 

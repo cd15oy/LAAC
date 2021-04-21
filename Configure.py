@@ -159,11 +159,11 @@ if __name__ == "__main__":
     validationRunner = RandomInstanceRunner(validationSuite, characterizer, termination, rng.randint(0,4000000000), alg, scenario["threads"])
 
     if WORKINMEMORY:
-        configDB = sqlite3ConfigurationDB(path=":memory:", initialize=True)
+        configDB = sqlite3ConfigurationDB(path=":memory:", initialize=True,seed=rng.randint(0,4000000000))
         validationConfigDB = sqlite3ConfigurationDB(path=":memory:", initialize=True) 
     else:
         configDB = sqlite3ConfigurationDB(path=f"{DBFILE}.training.sqlite3", initialize=True)
-        validationConfigDB = sqlite3ConfigurationDB(path=f"{DBFILE}.validation.sqlite3", initialize=True) 
+        validationConfigDB = sqlite3ConfigurationDB(path=f"{DBFILE}.validation.sqlite3", initialize=True,seed=rng.randint(0,4000000000)) 
 
     
 
