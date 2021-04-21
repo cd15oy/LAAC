@@ -150,6 +150,10 @@ if __name__ == "__main__":
     
     #TODO: figre out how Configure should be made aware of the problem dimensionality 
     #also, what about configuring for problems of different dimensionality simutaneously?
+    #perhaps we should test on functions of a single size, and plan to use an auto-encoder/feature reduction in the future to normalize input sizes?
+    #a much better idea is probably to give the model multiple heads, one for each size
+    #so dimensionality becomes a required parameter of a problem, walk the suite to grab all dimensionalities, initialize a separate head for each one 
+    # Each head could be a layer or two, and during training will be updated appropriately for feature vectors of that size  
     
     #model = RandomGenerator(configurationDefinition, rng.randint(0,4000000000))
     
