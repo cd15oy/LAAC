@@ -45,7 +45,6 @@ class SimpleEvaluator(Evaluator):
         self._updatedAt = 0
 
     def evaluate(self, configDB:ConfigurationDB) -> None :
-        #TODO: need to prune clearly bad configs
         self._topX(configDB, self.x) 
 
         if self.reRun:
@@ -53,7 +52,6 @@ class SimpleEvaluator(Evaluator):
         else: 
             self._neverReRun(configDB)
 
-    #TODO: when performance matters we'll need to do a random sample of configurations, and estimate quantiles from that 
     #classifies a run as desirable if it's quality falls with the top x percent for that problem 
     #x should be a float in [0,1] where 0 will only use the best configuration for each problem, and 1 will use all configurations
     def _topX(self, configDB:ConfigurationDB, x:float) -> None:

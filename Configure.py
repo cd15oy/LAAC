@@ -17,10 +17,8 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 """
 
 
-#TODO: Final Prototype:
-#### Update the config DB to avoid the need to rewalk the entire DB over and over and over again
-####    also to drop unneeded inforation, ex the solutions/states and save space
-#### collect runs to compare random vs adaptive
+#TODO: collect runs to compare random vs adaptive
+#maybe delete some more extrenious info about runs?
 
 """
 The main file. This file can be run to configure your algorithm after valid LAAC settings files have been defined. See parameters.py 
