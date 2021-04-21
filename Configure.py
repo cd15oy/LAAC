@@ -128,8 +128,6 @@ if __name__ == "__main__":
     #create a location for algorithm output 
     Path(ALGORITHMSTORAGEPATH).mkdir(parents=True, exist_ok=True)
 
-    #TODO: scenario should have a flag to choose between the adaptive and random generators
-
     rng = Random(seed)
 
     alg = Algorithm(scenario["targetAlgorithm"], scenario["staticArgs"], scenario["strictConstraints"]==False, ALGORITHMSTORAGEPATH) 
