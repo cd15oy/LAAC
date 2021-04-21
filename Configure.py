@@ -123,7 +123,7 @@ if __name__ == "__main__":
     
     if MODELTYPE == "Adaptive":
         generatorType = AdaptiveGenerator
-        model = AdaptiveGenerator(159, configurationDefinition, seed=rng.randint(0,4000000000), minInformedPercent=MININFORMEDPERCENT, maxInformedPercent=MAXINFORMEDPERCENT, informedPercentVariance=INFOMREDPERCENTVARIANCE)
+        model = AdaptiveGenerator(199, configurationDefinition, seed=rng.randint(0,4000000000), minInformedPercent=MININFORMEDPERCENT, maxInformedPercent=MAXINFORMEDPERCENT, informedPercentVariance=INFOMREDPERCENTVARIANCE)
     elif MODELTYPE == "Random":
         generatorType = RandomGenerator 
         model = RandomGenerator(configurationDefinition, rng.randint(0,4000000000))
