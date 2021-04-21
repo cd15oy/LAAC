@@ -19,6 +19,7 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 from statistics import mean 
 from Configurator.ConfigurationDB import ConfigurationDB
 from time import time
+from bisect import bisect
 
 """
 Responsible for examining and providing a relative evaluation of the configurations in a ConfigurationDB. Configurations representing desirable performance will be flagged. Some configurations may also be flagged to indicate more information is required. 
@@ -40,6 +41,8 @@ class SimpleEvaluator(Evaluator):
         self.x = x 
         self.reRun = reRun
         self.maxRunsPerConfig = maxRunsPerConfig
+        self._qualities = dict()
+        self._updatedAt = 0
 
     def evaluate(self, configDB:ConfigurationDB) -> None :
         #TODO: need to prune clearly bad configs
@@ -54,20 +57,65 @@ class SimpleEvaluator(Evaluator):
     #classifies a run as desirable if it's quality falls with the top x percent for that problem 
     #x should be a float in [0,1] where 0 will only use the best configuration for each problem, and 1 will use all configurations
     def _topX(self, configDB:ConfigurationDB, x:float) -> None:
-        for problem in configDB.problemGenerator():
-            records = []
-            for record in problem:
-                runs = record.getRuns() 
-                quality = mean([x.quality() for x in runs])
-                records.append((quality, record))
-            records.sort(key=lambda x : x[0]) 
-            cutOff = records[int(len(records)*x)][0] 
 
-            for record in records:
-                if record[0] <= cutOff:
-                    record[1].desirable(True)
-                else:
-                    record[1].desirable(False)  
+        tme = self._updatedAt 
+        rcrds = configDB.getNew(self._updatedAt)
+        for rcrd in rcrds:
+            
+            #keep track of the newest record observed 
+            if rcrd.updatedAt() > tme:
+                tme = rcrd.updatedAt() 
+
+            #create the quality list if needed 
+            prob = rcrd.problem()
+            if prob not in self._qualities:
+                self._qualities[prob] = ([],[])
+
+            #grab the list and pre-compute a list  of keys 
+            quals = self._qualities[prob][0]
+            keys = self._qualities[prob][1]
+
+            #check if the record is present, remove if needed 
+            for i,val in enumerate(quals):
+                if val["id"] == rcrd.id():
+                    del quals[i] 
+                    del keys[i]
+
+            #create an updated dict for the record, and insert 
+            val = {"id":rcrd.id(),"quality":mean([x.quality() for x in rcrd.getRuns()])}
+
+            #find position to insert to 
+            idx = bisect(keys, val["quality"]) 
+
+            #insert back into the list 
+            keys.insert(idx, val["quality"])
+            quals.insert(idx, val)
+
+            if idx/len(keys) <= self.x:
+                rcrd.desirable(True)
+            else:
+                rcrd.desirable(False)
+        
+        #finally, record the time of the newest observed record 
+        self._updatedAt = tme 
+
+
+            
+
+        # for problem in configDB.problemGenerator():
+        #     records = []
+        #     for record in problem:
+        #         runs = record.getRuns() 
+        #         quality = mean([x.quality() for x in runs])
+        #         records.append((quality, record))
+        #     records.sort(key=lambda x : x[0]) 
+        #     cutOff = records[int(len(records)*x)][0] 
+
+        #     for record in records:
+        #         if record[0] <= cutOff:
+        #             record[1].desirable(True)
+        #         else:
+        #             record[1].desirable(False)  
 
 
     #these two methods represent the two extremes for when to or not to re-run a configuration 

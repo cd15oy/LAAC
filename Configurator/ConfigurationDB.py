@@ -58,6 +58,12 @@ class RecordTemplate:
     def updatedAt(self) -> int:
         raise NotImplementedError
 
+    def problem(self) -> int:
+        raise NotImplementedError
+
+    def id(self) -> int:
+        raise NotImplementedError
+
 """
 Defines our database of tested configurations
 """
@@ -104,20 +110,26 @@ class sqlite3Record(RecordTemplate):
     #con is a connection to the underlying db 
     def __init__(self, id:int, problem:int, db:sqlite3.Connection):
         #No internal state here, this is just a class for interfacing with out DB
-        self.id = id
-        self.db = db
-        self.problem = problem
+        self._id = id
+        self._db = db
+        self._problem = problem
+
+    def problem(self) -> int:
+        return self._problem 
+
+    def id(self) -> int:
+        return self._id 
 
     #add a run to the record
     def addRun(self, run: Run) -> None:
         cur = self.db.cursor()
         runBlob = pickle.dumps(run)
         cur.execute("  INSERT INTO runs        (run, record) \
-                            VALUES                  ({},{},{})".format(runBlob, self.id))
+                            VALUES                  ({},{},{})".format(runBlob, self._id))
 
         cur.execute("  UPDATE records \
                             SET modified = {} \
-                            WHERE id = {}".format(int(time.time()*1000000), self.id))
+                            WHERE id = {}".format(int(time.time()*1000000), self._id))
         self.db.commit()
 
     #list the runs associated with the record
@@ -125,7 +137,7 @@ class sqlite3Record(RecordTemplate):
         cur = self.db.cursor() 
         cur.execute("   SELECT run \
                         FROM runs \
-                        WHERE record = {}".format(self.id))
+                        WHERE record = {}".format(self._id))
 
         return [pickle.loads(row[0]) for row in cur]
 
@@ -135,7 +147,7 @@ class sqlite3Record(RecordTemplate):
         if val is None:
             cur.execute("   SELECT rerun \
                             FROM records \
-                            WHERE id = {}".format(self.id)) 
+                            WHERE id = {}".format(self._id)) 
             return cur.fetchone()[0] != 0
         else:
             if val:
@@ -144,7 +156,7 @@ class sqlite3Record(RecordTemplate):
                 rerun = 0
             cur.execute("   UPDATE records \
                             SET modified = {}, rerun = {} \
-                            WHERE id = {}".format(int(time.time()*1000000), rerun, self.id))
+                            WHERE id = {}".format(int(time.time()*1000000), rerun, self._id))
             self.db.commit()
 
     #check or set this records desirable flag
@@ -153,7 +165,7 @@ class sqlite3Record(RecordTemplate):
         if val is None:
             cur.execute("   SELECT desirable \
                             FROM records \
-                            WHERE id = {}".format(self.id)) 
+                            WHERE id = {}".format(self._id)) 
             return cur.fetchone()[0] != 0 
         else:
             if val:
@@ -162,7 +174,7 @@ class sqlite3Record(RecordTemplate):
                 desirable = 0
             cur.execute("   UPDATE records \
                             SET modified = {}, desirable = {} \
-                            WHERE id = {}".format(int(time.time()*1000000), desirable, self.id))
+                            WHERE id = {}".format(int(time.time()*1000000), desirable, self._id))
             self.db.commit()
 
     #retrieve the modified time of this record 
@@ -170,7 +182,7 @@ class sqlite3Record(RecordTemplate):
         cur = self.db.cursor()
         cur.execute("   SELECT modified \
                         FROM records \
-                        WHERE id = {}".format(self.id))
+                        WHERE id = {}".format(self._id))
         return cur.fetchone()[0]
 
 """
