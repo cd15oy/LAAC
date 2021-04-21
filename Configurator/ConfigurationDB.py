@@ -122,7 +122,7 @@ class sqlite3Record(RecordTemplate):
 
     #add a run to the record
     def addRun(self, run: Run) -> None:
-        cur = self.db.cursor()
+        cur = self._db.cursor()
         runBlob = pickle.dumps(run)
         cur.execute("  INSERT INTO runs        (run, record) \
                             VALUES                  ({},{},{})".format(runBlob, self._id))
@@ -130,11 +130,11 @@ class sqlite3Record(RecordTemplate):
         cur.execute("  UPDATE records \
                             SET modified = {} \
                             WHERE id = {}".format(int(time.time()*1000000), self._id))
-        self.db.commit()
+        self._db.commit()
 
     #list the runs associated with the record
     def getRuns(self) -> List[Run]:
-        cur = self.db.cursor() 
+        cur = self._db.cursor() 
         cur.execute("   SELECT run \
                         FROM runs \
                         WHERE record = {}".format(self._id))
@@ -143,7 +143,7 @@ class sqlite3Record(RecordTemplate):
 
     #check or set this records rerun flag
     def reRun(self, val:bool=None) -> Union[None, bool]:
-        cur = self.db.cursor()
+        cur = self._db.cursor()
         if val is None:
             cur.execute("   SELECT rerun \
                             FROM records \
@@ -157,11 +157,11 @@ class sqlite3Record(RecordTemplate):
             cur.execute("   UPDATE records \
                             SET modified = {}, rerun = {} \
                             WHERE id = {}".format(int(time.time()*1000000), rerun, self._id))
-            self.db.commit()
+            self._db.commit()
 
     #check or set this records desirable flag
     def desirable(self, val:bool=None) ->  Union[None, bool]:
-        cur = self.db.cursor()
+        cur = self._db.cursor()
         if val is None:
             cur.execute("   SELECT desirable \
                             FROM records \
@@ -175,11 +175,11 @@ class sqlite3Record(RecordTemplate):
             cur.execute("   UPDATE records \
                             SET modified = {}, desirable = {} \
                             WHERE id = {}".format(int(time.time()*1000000), desirable, self._id))
-            self.db.commit()
+            self._db.commit()
 
     #retrieve the modified time of this record 
     def updatedAt(self) -> int:
-        cur = self.db.cursor()
+        cur = self._db.cursor()
         cur.execute("   SELECT modified \
                         FROM records \
                         WHERE id = {}".format(self._id))
