@@ -126,6 +126,7 @@ class SimpleEvaluator(Evaluator):
 
     #always asks for more runs of a desirable configuration, until the maximum number of runs per configuration is reached 
     def _alwaysReRun(self, maxRunsPerConfig:int, configDB:ConfigurationDB) -> None:
+        #TODO: this can be much cheaper
         for problem in configDB.problemGenerator():
             for record in problem:
                 if record.desirable():
