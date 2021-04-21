@@ -27,16 +27,9 @@ from Configurator.Model import LatinHyperCube, NeuralNetwork
 from numpy import ndarray
 from copy import deepcopy
 
-#TODO:BIG DEAL rnd and adaptive need to be updated to load a seed parameter instead of a random state 
-#we NEED all processes to have different RNG to get run diversity 
 def initModel(state:dict, seed:int=None) -> "ConfigurationGenerator":
     return state["type"].loadState(state, seed)
 
-
-
-#TODO: the method signatures here will likely change as we flesh out the system 
-#ideally we want the Configuration generator to handle decisions about which underlying model to use
-#testing/experimenting will help to work out what specific information the generator will need to make good decisions
 
 """
 Responsible for acquiring configurations from a model or models, preprocessing/postprocessing, and validation of the config. 
@@ -282,8 +275,6 @@ class AdaptiveGenerator(ConfigurationGenerator):
 
         iterHist["bestQualities"] = bestQual 
         iterHist["aveQualities"] = aveQual
-
-        #TODO: non-desirable configs should be pruned here to save on space 
 
         aveInformedConfig = observedInformedConfigs/observedConfigs 
 

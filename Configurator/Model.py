@@ -28,8 +28,6 @@ from math import isfinite
 from random import Random,seed as setPythonSeed
 import torch
 
-
-#TODO: remove model level locking, its moved up to  the config generator
 """ 
 This class defines a method for selecting the "next" configuration to be used with the algorithm
 """
@@ -200,8 +198,6 @@ class NeuralNetwork(Model):
 
         self.origSeed = seed 
         self.rng = Random(seed) 
-        #TODO: enable GPU accelerated training
-        #self.device = torch.device("cuda:0" if torch.cuda.is_available() and not cpu else "cpu")
         torch.cuda.manual_seed_all(self.rng.randint(0,4000000000))
         #A bunch of stuff to make sure pytorch is reproducible 
         #Commenting this out may improve performance in some cases 
@@ -253,7 +249,6 @@ class NeuralNetwork(Model):
         return examples
 
     #train the model
-    #TODO: something more efficient
     def _update(self, configs:ConfigurationDB) -> None:
         #TODO???
         torch.manual_seed(self.rng.randint(0,4000000000))
@@ -261,10 +256,7 @@ class NeuralNetwork(Model):
         setPythonSeed(self.rng.randint(0,4000000000))
         #torch.cuda.manual_seed_all(self.rng.randint(0,4000000000))
         #######
-        
-
-        
-  
+    
         self.predictor.train()
 
         optimizer = self.optimizer 
