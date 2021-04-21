@@ -35,10 +35,11 @@ from random import Random
 
 class Algorithm:
 
-    def __init__(self, wrapperCall: str, staticArgs: str, evaluateInvalid:bool=False) -> None:
+    def __init__(self, wrapperCall: str, staticArgs: str, evaluateInvalid:bool=False, storagePath: str = "./") -> None:
         self.wrapperCall = wrapperCall 
         self.staticArgs = staticArgs
         self.evaluateInvalid = evaluateInvalid
+        self.storagePath = storagePath
     
   
     #note, termination condition needs to come from above, 
@@ -94,7 +95,7 @@ class Algorithm:
                 characterizeSeed = rng.randint(0,4000000000) #A seed for the random sampler in characterize
 
                 #construct our command 
-                toRun = " ".join([self.wrapperCall, str(threadID), str(seed), self.staticArgs, instance.toFlags(), conf.toFlags(), restore])
+                toRun = " ".join([self.wrapperCall, str(threadID), str(seed), self.storagePath, self.staticArgs, instance.toFlags(), conf.toFlags(), restore])
 
                 io = Popen(toRun.strip().split(" "), stdout=PIPE, stderr=PIPE)
 
@@ -112,6 +113,7 @@ class Algorithm:
                 #print(output)
                 loc = output.find("RESULTS FOLLOW")
                 try:
+                    #TODO: json does not support nan, inf, etc, need to cope with those here 
                     result = json.loads(output[loc + 14:])
                 except JSONDecodeError:
                     print(output)

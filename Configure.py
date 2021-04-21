@@ -20,8 +20,6 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 #TODO: Final Prototype:
 #### Update the config DB to avoid the need to rewalk the entire DB over and over and over again
 ####    also to drop unneeded inforation, ex the solutions/states and save space
-#### Provide examples as a batch to torch to better use CPUs
-#### update PSO implementation to produce needed output 
 #### collect runs to compare random vs adaptive
 
 """
@@ -44,6 +42,10 @@ from random import Random, randint
 from typing import List 
 from pathlib import Path
 import pickle
+from os import path
+from shutil import rmtree
+
+
 
 #Counts the total FEs consumed by a list of runs 
 def countFEs(runs:List[Run]) -> int:
@@ -65,6 +67,7 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser(description='A tool for adaptive landscape aware online algorithm configuration.')
     parser.add_argument("-seed", action="store", nargs='?', default=None,  help="The seed for random number generation.", dest="seed") 
     parser.add_argument("-scenario", action="store", nargs=1, default=None , help="The scenario file to read from.", dest="scenario")
+    parser.add_argument("-outDir", action="store", nargs='?', default=None, help="A directory to write results to.", dest="outDir")
     
     args = parser.parse_args()
 
@@ -92,10 +95,19 @@ if __name__ == "__main__":
     else:
         seed = scenario["seed"]
 
+    if args.outDir is not None:
+        RESULTSPATH = args.outDir 
+    else:
+        RESULTSPATH = scenario["resultsStoragePath"]
+    
     DBFILE = scenario["dbfile"]
+    DBFILE = f"{RESULTSPATH}/{DBFILE}/"
     WORKINMEMORY = scenario["workInMemory"]
     MODELHISTORYFILE = scenario["modelHistory"]
+    MODELHISTORYFILE = f"{RESULTSPATH}/{MODELHISTORYFILE}/"
     MODELSTORAGEPATH = scenario["modelStoragePath"]
+    MODELSTORAGEPATH = f"{RESULTSPATH}/{MODELSTORAGEPATH}/"
+    ALGORITHMSTORAGEPATH = f"{RESULTSPATH}/algorithm/"
     VALIDATE = scenario["validate"]
     COUNTVALIDATIONFES = scenario["countValidationFEs"]
     MODELTYPE = scenario["modelType"] 
@@ -103,14 +115,24 @@ if __name__ == "__main__":
     MAXINFORMEDPERCENT = scenario["maxInformedPercent"]
     INFOMREDPERCENTVARIANCE = scenario["informedPercentVariance"]
 
+    #If the results path exists, remove it and all contained files 
+    if path.exists(RESULTSPATH):
+        rmtree(RESULTSPATH)
+
+    #create the results path 
+    Path(RESULTSPATH).mkdir(parents=True, exist_ok=True)
+
     #ensure the model storage location exists 
     Path(MODELSTORAGEPATH).mkdir(parents=True, exist_ok=True)
+
+    #create a location for algorithm output 
+    Path(ALGORITHMSTORAGEPATH).mkdir(parents=True, exist_ok=True)
 
     #TODO: scenario should have a flag to choose between the adaptive and random generators
 
     rng = Random(seed)
 
-    alg = Algorithm(scenario["targetAlgorithm"], scenario["staticArgs"], scenario["strictConstraints"]==False) 
+    alg = Algorithm(scenario["targetAlgorithm"], scenario["staticArgs"], scenario["strictConstraints"]==False, ALGORITHMSTORAGEPATH) 
 
     termination = FELimit(scenario["runFELimit"])
     

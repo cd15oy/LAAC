@@ -25,19 +25,20 @@ import sys
 import re 
 
 #argv[1] will contain a thread ID. This could be used to ensure that multiple simultaneous runs of the algorithm will output to different locations 
-#argv[2] will contain a seed 
-#argv[3] and onward will contain flags for the underlying algorithm, here we're ensuring that LAAC uses the same naming and formatting conventions as the underlying algorithm 
+#argv[2] will contain a seed
+#argv[3] will contain a path to where the algorithm can write to disk, if needed 
+#argv[4] and onward will contain flags for the underlying algorithm, here we're ensuring that LAAC uses the same naming and formatting conventions as the underlying algorithm 
 #in practice it may be necessary to parse the arguments passed to target-algorithm.py and then provide them to the underlying optimizer in the correct format 
 
 #in our case, random search expects means and stds for the sampling distributions to be passed as a single argument, but LAAC will provide each separately
 #so we parse those arguments here and reformat them 
 
-if len(sys.argv) > 3:
+if len(sys.argv) > 4:
     means = [] 
     stds = [] 
     others = []
     #extract the args to reformat, set asside the rest 
-    for i in range(3, len(sys.argv), 2):
+    for i in range(4, len(sys.argv), 2):
         if re.match("-m\d+",sys.argv[i]) is not None:
             means.append((sys.argv[i], sys.argv[i+1]))
         

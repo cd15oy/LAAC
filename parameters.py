@@ -462,6 +462,7 @@ scenario =  {
                                 "workInMemory":True,                            #If true results will be kept in memory at runtime, and written to disk at the end of the run
                                 "modelHistory":"modelHistory.json",             #A summary of the underlying model's performance
                                 "modelStoragePath":"models/",                   #A path at which to store model checkpoints
+                                "resultsStoragePath":"results/",                #Output from LAAC will be written under this path, existing content will be deleted 
                                 "validate":True,                                #Whether or not to perform validation 
                                 "countValidationFEs":False,                     #Validation FEs are not counted towards the total since their result is independent of the training process 
                                 "modelType":"Adaptive",                     #The type of underlying model used for predicting parametes. <Adaptive or Random>
