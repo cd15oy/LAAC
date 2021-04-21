@@ -257,9 +257,6 @@ class sqlite3ConfigurationDB(ConfigurationDB):
         
         return ret
         
-    #TODO: this should be updated to accept a param for how many, and return a random selection 
-    #see google for efficient ways to grab random or randomish selections from tables in sqlite
-    
     #produces the current desirable runs 
     #limit gives the max number of results which should be returned. If there are more than limit results available, a random selection will be returned 
     def getDesirables(self, limit:int=None) -> List[Run]:
