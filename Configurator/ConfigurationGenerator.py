@@ -279,7 +279,6 @@ class AdaptiveGenerator(ConfigurationGenerator):
         aveInformedConfig = observedInformedConfigs/observedConfigs 
 
         self._informedPercent = aveInformedConfig #On average, the percentage of predictions which should be "informed" are chosen based on the percentage of informed predictions among the desirable configurations 
-        print("Informed Percent: {}".format(self._informedPercent))
 
         iterHist["informedPercent"] = self._informedPercent 
 

@@ -309,14 +309,12 @@ class NeuralNetwork(Model):
 
                 loss = loss/len(data)
                 loss.backward()
-                print(f"loss: {loss.item()}              \r", end="")
                 optimizer.step()
                 optimizer.zero_grad()
                 lossList.append(loss.item()) 
                 loss = None
 
         self.predictor.eval()
-        print("")
         self.history.append(lossList)
         
 
