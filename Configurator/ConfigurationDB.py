@@ -208,6 +208,9 @@ class sqlite3ConfigurationDB(ConfigurationDB):
 
     #Add a run to the DB
     def addRun(self, run: Run) -> None:
+
+        #TODO: probably need to do this -> stop pickling the entire run, its a waste of time
+        #expand the runs table to store more info directly, pickle the alg output json, have run objects lazy load the alg data
         cur = self.db.cursor()
 
         config = run.runConfigID() 
