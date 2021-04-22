@@ -42,6 +42,7 @@ from pathlib import Path
 import pickle
 from os import path
 from shutil import rmtree
+from time import time
 
 
 
@@ -54,8 +55,7 @@ def countFEs(runs:List[Run]) -> int:
 
     return total 
 
-
-if __name__ == "__main__":
+def main():
     #needed for torch, since torch is stateful
     multiprocessing.set_start_method("spawn")
 
@@ -99,10 +99,10 @@ if __name__ == "__main__":
         RESULTSPATH = scenario["resultsStoragePath"]
     
     DBFILE = scenario["dbfile"]
-    DBFILE = f"{RESULTSPATH}/{DBFILE}/"
+    DBFILE = f"{RESULTSPATH}/{DBFILE}"
     WORKINMEMORY = scenario["workInMemory"]
     MODELHISTORYFILE = scenario["modelHistory"]
-    MODELHISTORYFILE = f"{RESULTSPATH}/{MODELHISTORYFILE}/"
+    MODELHISTORYFILE = f"{RESULTSPATH}/{MODELHISTORYFILE}"
     MODELSTORAGEPATH = scenario["modelStoragePath"]
     MODELSTORAGEPATH = f"{RESULTSPATH}/{MODELSTORAGEPATH}/"
     ALGORITHMSTORAGEPATH = f"{RESULTSPATH}/algorithm/"
@@ -183,9 +183,9 @@ if __name__ == "__main__":
         run.performedOnIteration = 0
         configDB.addRun(run)
 
+    start = time()
 
     iteration = 1
-    best = dict() 
     while totalFEsConsumed < FELIMIT:
         # for getting some stats about memory usage 
         # from guppy import hpy
@@ -194,20 +194,34 @@ if __name__ == "__main__":
         
         print("Progress: {}/{}".format(totalFEsConsumed,FELIMIT))
 
+        start = time()
         evaluator.evaluate(configDB)
+        tot = time() - start 
+        print(f"Evaluator: {tot}")
 
+        start = time()
         model.update(configDB)
+        tot = time() - start 
+        print(f"Update: {tot}")
 
+        start = time()
         #TODO: limit the total runs per iteration, and/or the total new configs vs the total reuns? adapt the limits according to criteria or iteration?
+        #do re-runs?
         toReRun = configDB.getReRuns() 
         newRuns = runner.schedule(configsPerIteration, minRunsPerConfig, model)
+        tot = time() - start 
+        print(f"Schedule: {tot}")
+
+        start = time()
         totalFEsConsumed += countFEs(newRuns)
         for run in newRuns:
             run.performedOnIteration = iteration
             configDB.addRun(run)
+        tot = time()-start 
+        print(f"Loading DB: {tot}")
 
-        summary = model.history()["history"][-1] 
-        print(summary)
+        # summary = model.history()["history"][-1] 
+        # print(summary)
 
         #Write the models current state to disk
         with open(f"{MODELSTORAGEPATH}/model_{iteration}.bin", 'wb') as outF:
@@ -233,3 +247,5 @@ if __name__ == "__main__":
         outF.write(json.dumps(model.history(),indent=2))
 
 
+if __name__ == "__main__":
+    main()
