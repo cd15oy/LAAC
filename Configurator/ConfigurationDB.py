@@ -99,12 +99,11 @@ class sqlite3Record(RecordTemplate):
     #id is the primary key of the record 
     #db is a connection to the underlying db 
     #problem is the identifier of the problem associated with this record
-    def __init__(self, id:int, problem:int, db:sqlite3.Connection):
-        #No internal state here, this is just a class for interfacing with out DB
+    def __init__(self, id:int, problem:int, db:sqlite3.Connection, qualities:List[float]):
         self._id = id
         self._db = db
         self._problem = problem
-        self._qualities = []
+        self._qualities = qualities
 
     def problem(self) -> int:
         return self._problem 
@@ -290,7 +289,6 @@ class sqlite3ConfigurationDB(ConfigurationDB):
 
         idList = "(" + ",".join([str(x) for x in ids]) + ")"
 
-        #grab an example run from each record flagged for rerun
         cur.execute(f"   SELECT  run \
                         FROM    runs \
                         WHERE record IN {idList}")
@@ -301,14 +299,20 @@ class sqlite3ConfigurationDB(ConfigurationDB):
             ret.append(run)
         return ret 
 
-    def _generateRecordsForProblem(self, problem):
+    def _generateRecordsForProblem(self, problem) -> Iterator[RecordTemplate]:
         cur = self.db.cursor()
-        cur.execute("   SELECT id, problem \
-                        FROM records \
-                        WHERE problem = {}".format(problem))
-
-        for id, problem in cur:
-            yield sqlite3Record(id, problem, self.db) 
+        cur.execute("   SELECT records.id, records.problem, quality \
+                        FROM records INNER JOIN runs on records.id = runs.record \
+                        WHERE problem = {} \
+                        ORDER BY records.id".format(problem))
+        prev = None
+        qualities = [] 
+        for id, problem, quality in cur:
+            if prev is not None and id != prev[0]:
+                yield sqlite3Record(prev[0], prev[1], self.db, qualities) 
+                qualities = [] 
+            prev = (id, problem)
+            qualities.append(quality)
 
     #returns a generator of generators, each generating all records for a specifc problem 
     def problemGenerator(self) -> Iterator[Iterator[RecordTemplate]]:
@@ -328,12 +332,18 @@ class sqlite3ConfigurationDB(ConfigurationDB):
     #returns any records as new as or newer than time 
     def getNew(self, time) -> Iterator[RecordTemplate]:
         cur = self.db.cursor() 
-        cur.execute("   SELECT id,problem \
-                        FROM records \
-                        WHERE modified >= {}".format(time))
-
-        for row in cur:
-            yield sqlite3Record(row[0], row[1], self.db) 
+        cur.execute("   SELECT records.id,records.problem,quality \
+                        FROM records INNER JOIN runs on records.id = runs.record\
+                        WHERE modified >= {} \
+                        ORDER BY records.id".format(time))
+        prev = None 
+        qualities = []
+        for id, problem, quality in cur:
+            if prev is not None and id != prev[0]:
+                yield sqlite3Record(prev[0], prev[1], self.db, qualities) 
+                qualities = [] 
+            prev = (id, problem) 
+            qualities.append(quality)
 
         
     #Backup this DB to the specified PATH
