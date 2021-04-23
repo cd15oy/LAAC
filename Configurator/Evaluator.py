@@ -105,7 +105,7 @@ class SimpleEvaluator(Evaluator):
         self._updatedAt = tme 
 
         profiler.disable() 
-        stats = pstats.Stats(profiler).sort_stats('totime')
+        stats = pstats.Stats(profiler).sort_stats('tottime')
         stats.strip_dirs()
         stats.print_stats()
 
