@@ -104,6 +104,7 @@ class sqlite3Record(RecordTemplate):
         self._id = id
         self._db = db
         self._problem = problem
+        self._qualities = []
 
     def problem(self) -> int:
         return self._problem 
@@ -122,6 +123,7 @@ class sqlite3Record(RecordTemplate):
                             SET modified = {} \
                             WHERE id = {}".format(int(time.time()*1000000), self._id))
         self._db.commit()
+        self._qualities.append(run.quality())
 
     #list the runs associated with the record
     def getRuns(self) -> List[Run]:
@@ -177,11 +179,8 @@ class sqlite3Record(RecordTemplate):
         return cur.fetchone()[0]
         
     def qualities(self) -> List[float]:
-        cur = self._db.cursor()
-        cur.execute(f"  SELECT quality \
-                        FROM runs \
-                        WHERE record = {self._id}")
-        return [row[0] for row in cur]
+        return self._qualities
+        
 
 """
 A configuration DB backed by sqlite 3.
