@@ -80,7 +80,8 @@ class SimpleEvaluator(Evaluator):
                     del keys[i]
 
             #create an updated dict for the record, and insert 
-            val = {"id":rcrd.id(),"quality":mean([x.quality() for x in rcrd.getRuns()])}
+            # val = {"id":rcrd.id(),"quality":mean([x.quality() for x in rcrd.getRuns()])}
+            val = {"id":rcrd.id(),"quality":mean(rcrd.qualities())}
 
             #find position to insert to 
             idx = bisect(keys, val["quality"]) 

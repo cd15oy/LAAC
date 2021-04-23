@@ -52,6 +52,9 @@ class RecordTemplate:
     def id(self) -> int:
         raise NotImplementedError
 
+    def qualities(self) -> List[float]:
+        raise NotImplementedError
+
 """
 Defines our database of tested configurations
 """
@@ -172,6 +175,13 @@ class sqlite3Record(RecordTemplate):
                         FROM records \
                         WHERE id = {}".format(self._id))
         return cur.fetchone()[0]
+        
+    def qualities(self) -> List[float]:
+        cur = self._db.cursor()
+        cur.execute(f"  SELECT quality \
+                        FROM runs \
+                        WHERE record = {self._id}")
+        return [row[0] for row in cur]
 
 """
 A configuration DB backed by sqlite 3.
@@ -201,6 +211,7 @@ class sqlite3ConfigurationDB(ConfigurationDB):
             cur.execute("CREATE TABLE runs ( \
                 run     BLOB NOT NULL, \
                 record  INTEGER NOT NULL, \
+                quality REAL NOT NULL, \
                 FOREIGN KEY(record) REFERENCES records(id) \
             )")
 
@@ -231,8 +242,8 @@ class sqlite3ConfigurationDB(ConfigurationDB):
 
         runBlob = pickle.dumps(run)
 
-        cur.execute("  INSERT INTO runs        (run, record) \
-                            VALUES                  (?,?)", (runBlob, rcrdID))
+        cur.execute("  INSERT INTO runs        (run, record, quality) \
+                            VALUES                  (?,?,?)", (runBlob, rcrdID,run.quality()))
 
         cur.execute("  UPDATE records \
                             SET modified = {} \
