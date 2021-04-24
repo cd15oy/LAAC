@@ -191,6 +191,17 @@ def main():
         # from guppy import hpy
         # h = hpy()
         # print(h.heap())
+
+        # import cProfile,pstats 
+
+        # profiler = cProfile.Profile() 
+
+        # profiler.enable() 
+
+        # profiler.disable() 
+        # stats = pstats.Stats(profiler).sort_stats('tottime')
+        # stats.strip_dirs()
+        # stats.print_stats()
         
         print("Progress: {}/{}".format(totalFEsConsumed,FELIMIT))
 
