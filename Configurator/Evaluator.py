@@ -56,12 +56,6 @@ class SimpleEvaluator(Evaluator):
     #x should be a float in [0,1] where 0 will only use the best configuration for each problem, and 1 will use all configurations
     def _topX(self, configDB:ConfigurationDB, x:float) -> None:
 
-        import cProfile,pstats 
-
-        profiler = cProfile.Profile() 
-
-        profiler.enable() 
-
         tme = self._updatedAt 
         rcrds = configDB.getNew(self._updatedAt)
         for rcrd in rcrds:
@@ -103,14 +97,6 @@ class SimpleEvaluator(Evaluator):
         
         #finally, record the time of the newest observed record 
         self._updatedAt = tme 
-
-        profiler.disable() 
-        stats = pstats.Stats(profiler).sort_stats('tottime')
-        stats.strip_dirs()
-        stats.print_stats()
-
-
-            
 
         # for problem in configDB.problemGenerator():
         #     records = []
