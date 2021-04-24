@@ -25,7 +25,7 @@ from Configurator.ConfigurationGenerator import ConfigurationGenerator
 from random import Random
 from Configurator.Characterizer import Characterizer
 from Configurator.ProblemSuite import ProblemSuite
-
+from copy import deepcopy
 from multiprocessing import Process, Manager
 
 #A wrapper to capture the return value of alg
@@ -69,7 +69,9 @@ class Runner:
 
         ret = [manager.list() for x in range(len(todo))] 
 
-        todo = [(inst, conf, self.characterizer, confSampler.getState(), self.terminationCondition, self.rng.randint(0,4000000000),i) for i,(inst,conf) in enumerate(todo)]
+        samplerState = confSampler.getState()
+
+        todo = [(inst, conf, self.characterizer, deepcopy(samplerState), self.terminationCondition, self.rng.randint(0,4000000000),i) for i,(inst,conf) in enumerate(todo)]
 
         todo = [Process(target=_algWrapper, args=(self.algorithm.run, x, ret[i])) for i,x in enumerate(todo)]
         running = []
