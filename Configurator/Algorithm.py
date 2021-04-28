@@ -31,8 +31,6 @@ from subprocess import Popen, PIPE
 import json
 from random import Random
 
-#TODO: tests for evaluateInvalid = False 
-
 class Algorithm:
 
     def __init__(self, wrapperCall: str, staticArgs: str, evaluateInvalid:bool=False, storagePath: str = "./") -> None:
@@ -98,8 +96,10 @@ class Algorithm:
                 
                 # #Finish populating the Configuration with data
                 conf.features = characterizer.characterize(result, characterizeSeed)
-                #TODO: remove this line 
+                #TODO: remove this?
+                #remove the specifc solutions generated to save on space
                 del result["state"] #significantly reduces the size of the DB -> testing to see how much it speed walks/checks of stored runs
+                del result["solutions"]
                 ##
                 conf.rawResult = result
                 conf.seed = seed 

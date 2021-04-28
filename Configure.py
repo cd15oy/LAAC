@@ -16,9 +16,13 @@ You should have received a copy of the GNU Lesser General Public License
 along with this program.  If not, see <https://www.gnu.org/licenses/>.
 """
 
-
+#Plans:
 #TODO: collect runs to compare random vs adaptive
 #maybe delete some more extrenious info about runs?
+#TODO: repeat the random vs adaptive test, ie rerun the adaptive version, with the per dimension features removed, making the network independent of dimensionality 
+#compare and see if the per dimension features are required for performance 
+#hopefully we can remove the per dimension features without significantly altering performance, otherwise we can leave them in, and leave variable dimensionality as future work/test any other options available 
+#TODO: test effects of varying the cut-off value for the evaluator 
 
 """
 The main file. This file can be run to configure your algorithm after valid LAAC settings files have been defined. See parameters.py 
