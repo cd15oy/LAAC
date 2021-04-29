@@ -42,7 +42,7 @@ class TestConfigurationDB(unittest.TestCase):
 
         for prob in probGenerators:
             records = [x for x in prob]
-            self.assertTrue(len(records) == 1, "Should be one record for each problem.")
+            self.assertEqual(len(records), 1, "Should be one record for each problem.")
 
             for rcrd in records:
 

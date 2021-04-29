@@ -63,8 +63,8 @@ class TestRunner(unittest.TestCase):
        
      
 
-        runs1 = rndInstRunner1.schedule(10, 2, sampler1.getState(), None) 
-        runs2 = rndInstRunner2.schedule(10, 2, sampler2.getState(), None)
+        runs1 = rndInstRunner1.schedule(10, 2, sampler1, None) 
+        runs2 = rndInstRunner2.schedule(10, 2, sampler2, None)
 
         for r1, r2 in zip(runs1,runs2):
             for c1,c2 in zip(r1.configurations,r2.configurations):

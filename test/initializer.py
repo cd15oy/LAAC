@@ -29,7 +29,7 @@ def getPopulatedConfigDB(seed:int) -> Tuple[List[Run],ConfigurationDB]:
     instances2 = suite.generateN(100, suite.problems[1]) 
 
     vals = {} 
-    for i in range(6):
+    for i in range(1,6):
         vals["mean{}".format(i)] = 0.0 
         vals["std{}".format(i)] = 1.0 
     vals["greedy"] = "True" 
@@ -68,11 +68,12 @@ def getPopulatedConfigDB(seed:int) -> Tuple[List[Run],ConfigurationDB]:
 
             c.features = np.asarray([rng.random() for x in range(159)])
             c.rawResult = result
+            c.quality = result["solutions"][-1]["quality"]
             run.configurations.append(c) 
         
         runs.append(run)
         
-    confDB = sqlite3ConfigurationDB(initialize=True)
+    confDB = sqlite3ConfigurationDB(initialize=True,seed=12345)
     
 
     for run in runs:

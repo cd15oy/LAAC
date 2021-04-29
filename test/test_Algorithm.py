@@ -81,8 +81,8 @@ class TestAlgorithm(unittest.TestCase):
 
         #Verify that we can repeat each execution of the target algorithm and get the same results
         for i,conf in enumerate(out1.configurations[1:]):
-            cmd = "{} {} {} {} {} {} {}".format("python3 target-algorithm.py", 0, conf.seed, "-d 5", self.instance.toFlags(), conf.toFlags(), out1.configurations[i].rawResult["algorithmState"])
-            
+            cmd = "{} {} {} {} {} {} {} {}".format("python3 target-algorithm.py", 0, conf.seed, ".", "-d 5", self.instance.toFlags(), conf.toFlags(), out1.configurations[i].rawResult["algorithmState"])
+         
             io = Popen(cmd.strip().split(" "), stdout=PIPE, stderr=PIPE)
             _stdout,_stderr = io.communicate() 
             output = _stdout.decode()
@@ -93,13 +93,13 @@ class TestAlgorithm(unittest.TestCase):
                 print(output)
                 raise ValueError
 
-            features = self.characterizer.characterize(result, conf.characterizeSeed)
+            for j,(sol1,sol2) in enumerate(zip(conf.rawResult["solutions"],result["solutions"])):
+                for k,(v1,v2) in enumerate(zip(sol1["solution"], sol2["solution"])):
+                    self.assertEqual(v1,v2, "Values {} of solutions {} of sequence of generated solutions should be the same.".format(k,j))
 
+
+            features = self.characterizer.characterize(result, conf.characterizeSeed)
+ 
             compareFeatures(self, conf.features, features)
 
-            for i,(sol1,sol2) in enumerate(zip(conf.rawResult["solutions"],result["solutions"])):
-                for j,(v1,v2) in enumerate(zip(sol1["solution"], sol2["solution"])):
-                    self.assertEqual(v1,v2, "Values {} of solutions {} of sequence of generated solutions should be the same.".format(j,i))
-
-
-  
+            
