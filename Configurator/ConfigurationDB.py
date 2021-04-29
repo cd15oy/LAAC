@@ -231,7 +231,7 @@ class sqlite3ConfigurationDB(ConfigurationDB):
         if result is None:
             cur.execute(   "   INSERT INTO records    (config, problem, desirable, rerun, modified)\
                                     VALUES                  ({},{},{},{},{})".format(config, problem, 0, 0, int(time.time()*1000000)))
-            #self.db.commit()
+            self.db.commit()
             cur.execute("SELECT id FROM records WHERE config = {} AND problem = {}".format(config,problem))
             result = cur.fetchone()
 
@@ -314,6 +314,8 @@ class sqlite3ConfigurationDB(ConfigurationDB):
             prev = (id, problem)
             qualities.append(quality)
 
+        yield sqlite3Record(prev[0], prev[1], self.db, qualities)
+
     #returns a generator of generators, each generating all records for a specifc problem 
     def problemGenerator(self) -> Iterator[Iterator[RecordTemplate]]:
         cur = self.db.cursor() 
@@ -345,6 +347,7 @@ class sqlite3ConfigurationDB(ConfigurationDB):
             prev = (id, problem) 
             qualities.append(quality)
 
+        yield sqlite3Record(prev[0], prev[1], self.db, qualities)
         
     #Backup this DB to the specified PATH
     def backup(self, path:str) -> None:
