@@ -44,7 +44,7 @@ class Algorithm:
     #its possible that we will produce cases which stagnate for a while, then see improvement 
     #the specific conditions which indicate time to terminate will need to be adapted based on observation, and specific to different problems 
     #the initial condition will probably a total FE limit 
-    def run(self, instance: Instance, initialConfig: Configuration, characterizer: Characterizer, modelState: dict, terminationCondition: TerminationCondition, runSeed: int, threadID:int) -> Run:
+    def run(self, instance: Instance, initialConfig: Configuration, characterizer: Characterizer, modelState: dict, terminationCondition: TerminationCondition, runSeed: int, threadID:int, deleteSols:bool=True) -> Run:
 
         rng = Random(runSeed)
 
@@ -96,11 +96,14 @@ class Algorithm:
                 
                 # #Finish populating the Configuration with data
                 conf.features = characterizer.characterize(result, characterizeSeed)
-                #TODO: remove this?
-                #remove the specifc solutions generated to save on space
-                del result["state"] #significantly reduces the size of the DB -> testing to see how much it speed walks/checks of stored runs
-                del result["solutions"]
-                ##
+
+                conf.quality = result["solutions"][-1]["quality"]
+                
+                #remove the specifc solutions generated to save on space, we have all the seeds and the model, if needed, we can re-generate later
+                if deleteSols:
+                    del result["state"] 
+                    del result["solutions"]
+                
                 conf.rawResult = result
                 conf.seed = seed 
                 conf.threadID = threadID 
