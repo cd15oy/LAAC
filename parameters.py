@@ -463,8 +463,10 @@ scenario =  {
                                 "modelHistory":"modelHistory.json",             #A summary of the underlying model's performance
                                 "modelStoragePath":"models/",                   #A path at which to store model checkpoints
                                 "resultsStoragePath":"results/",                #Output from LAAC will be written under this path, existing content will be deleted 
-                                "validate":True,                                #Whether or not to perform validation 
+                                "validate":False,                                #Whether or not to perform validation 
                                 "countValidationFEs":False,                     #Validation FEs are not counted towards the total since their result is independent of the training process 
+                                "randomlyAssignToValidation":0.0,              #Randomly assign a percentage of the problems from the "problems" list to the validation list (removing them from the problems list). Should be a number in [0,1]
+                                "configsPerValidation":32,                  #The number of configurations to run during validation
                                 "modelType":"Adaptive",                     #The type of underlying model used for predicting parametes. <Adaptive or Random>
                                 "minInformedPercent":0.05,                  #Three parameters used by the adaptive model influencing how often it's predictions are made randomly
                                 "maxInformedPercent":0.95,                  
