@@ -273,14 +273,14 @@ class AdaptiveGenerator(ConfigurationGenerator):
             bestQual[prob] = min(probQuality[prob])
             aveQual[prob] = mean(probQuality[prob])
 
-        iterHist["bestQualities"] = bestQual 
-        iterHist["aveQualities"] = aveQual
+        iterHist["estimatedBestQualities"] = bestQual 
+        iterHist["estimatedAveQualities"] = aveQual
 
         aveInformedConfig = observedInformedConfigs/observedConfigs 
 
         self._informedPercent = aveInformedConfig #On average, the percentage of predictions which should be "informed" are chosen based on the percentage of informed predictions among the desirable configurations 
 
-        iterHist["informedPercent"] = self._informedPercent 
+        iterHist["estimatedInformedPercent"] = self._informedPercent 
 
         self.training_history["history"].append(iterHist)
 
