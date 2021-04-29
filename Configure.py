@@ -17,12 +17,12 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 """
 
 #Plans:
-#TODO: collect runs to compare random vs adaptive
-#maybe delete some more extrenious info about runs?
+#TODO: collect runs to compare random vs adaptive: validate the adaptive version at each iteration, test with 100% training, 66% trainig, and 33% training
 #TODO: repeat the random vs adaptive test, ie rerun the adaptive version, with the per dimension features removed, making the network independent of dimensionality 
 #compare and see if the per dimension features are required for performance 
 #hopefully we can remove the per dimension features without significantly altering performance, otherwise we can leave them in, and leave variable dimensionality as future work/test any other options available 
 #TODO: test effects of varying the cut-off value for the evaluator 
+#TODO: determine how consistently a trained model will perform for specific initial configs
 
 """
 The main file. This file can be run to configure your algorithm after valid LAAC settings files have been defined. See parameters.py 
@@ -47,6 +47,7 @@ import pickle
 from os import path
 from shutil import rmtree
 from time import time
+from sys import stderr
 
 
 
@@ -116,6 +117,8 @@ def main():
     MININFORMEDPERCENT = scenario["minInformedPercent"]
     MAXINFORMEDPERCENT = scenario["maxInformedPercent"]
     INFOMREDPERCENTVARIANCE = scenario["informedPercentVariance"]
+    RANDOMLYASSIGNTOVALIDATION = scenario["randomlyAssignToValidation"]
+    VALIDATIONCONFIGS = scenario["configsPerValidation"]
 
     #If the results path exists, remove it and all contained files 
     if path.exists(RESULTSPATH):
@@ -138,6 +141,20 @@ def main():
     
     configurationDefinition = ConfigurationDefinition(parameters) 
 
+    #randomly assign from problems into the validation list   ###### HEREREERE
+    if RANDOMLYASSIGNTOVALIDATION is not None:
+        forTraining = []
+        forValidation = []
+        for i in range(len(problems["problems"])):
+            if rng.random() < RANDOMLYASSIGNTOVALIDATION:
+                forValidation.append(problems["problems"][i])
+            else:
+                forTraining.append(problems["problems"][i])
+
+        
+        problems["problems"] = forTraining 
+        problems["validation"] += forValidation
+        
     suite = ProblemSuite(problems, rng.randint(0,4000000000)) 
     validationSuite = ProblemSuite({"problems":problems["validation"]}, rng.randint(0,4000000000))
 
@@ -166,9 +183,9 @@ def main():
 
     if WORKINMEMORY:
         configDB = sqlite3ConfigurationDB(path=":memory:", initialize=True,seed=rng.randint(0,4000000000))
-        validationConfigDB = sqlite3ConfigurationDB(path=":memory:", initialize=True) 
+        validationConfigDB = sqlite3ConfigurationDB(path=":memory:", initialize=True,seed=rng.randint(0,4000000000)) 
     else:
-        configDB = sqlite3ConfigurationDB(path=f"{DBFILE}.training.sqlite3", initialize=True)
+        configDB = sqlite3ConfigurationDB(path=f"{DBFILE}.training.sqlite3", initialize=True,seed=rng.randint(0,4000000000))
         validationConfigDB = sqlite3ConfigurationDB(path=f"{DBFILE}.validation.sqlite3", initialize=True,seed=rng.randint(0,4000000000)) 
 
     
@@ -212,12 +229,12 @@ def main():
         start = time()
         evaluator.evaluate(configDB)
         tot = time() - start 
-        print(f"Evaluator: {tot}")
+        print(f"Evaluator: {tot}",file=stderr)
 
         start = time()
         model.update(configDB)
         tot = time() - start 
-        print(f"Update: {tot}")
+        print(f"Update: {tot}",file=stderr)
 
         start = time()
         #TODO: limit the total runs per iteration, and/or the total new configs vs the total reuns? adapt the limits according to criteria or iteration?
@@ -225,7 +242,7 @@ def main():
         toReRun = configDB.getReRuns() 
         newRuns = runner.schedule(configsPerIteration, minRunsPerConfig, model)
         tot = time() - start 
-        print(f"Schedule: {tot}")
+        print(f"Schedule: {tot}",file=stderr)
 
         start = time()
         totalFEsConsumed += countFEs(newRuns)
@@ -233,17 +250,17 @@ def main():
             run.performedOnIteration = iteration
             configDB.addRun(run)
         tot = time()-start 
-        print(f"Loading DB: {tot}")
+        print(f"Loading DB: {tot}",file=stderr)
 
-        # summary = model.history()["history"][-1] 
-        # print(summary)
+        summary = model.history()["history"][-1] 
+        print(summary)
 
         #Write the models current state to disk
         with open(f"{MODELSTORAGEPATH}/model_{iteration}.bin", 'wb') as outF:
             outF.write(pickle.dumps(model.getState()))
 
         if VALIDATE:
-            validationRuns = validationRunner.schedule(configsPerIteration, minRunsPerConfig, model)
+            validationRuns = validationRunner.schedule(VALIDATIONCONFIGS, 1, model)
             if COUNTVALIDATIONFES:
                 totalFEsConsumed += countFEs(validationRuns) 
             for run in validationRuns:
