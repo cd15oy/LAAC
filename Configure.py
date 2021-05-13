@@ -119,6 +119,9 @@ def main():
     INFOMREDPERCENTVARIANCE = scenario["informedPercentVariance"]
     RANDOMLYASSIGNTOVALIDATION = scenario["randomlyAssignToValidation"]
     VALIDATIONCONFIGS = scenario["configsPerValidation"]
+    FIXEDDIMENSIONALITY = scenario["fixedDimensionality"]
+    DIMENSIONALITY = scenario["dimensionality"]
+    
 
     #If the results path exists, remove it and all contained files 
     if path.exists(RESULTSPATH):
@@ -158,23 +161,19 @@ def main():
     suite = ProblemSuite(problems, rng.randint(0,4000000000)) 
     validationSuite = ProblemSuite({"problems":problems["validation"]}, rng.randint(0,4000000000))
 
-    characterizer = Characterizer()
+    #The NN requires characteristic vectors of a fixed size, but some characteristics are calculated for each problem dimension 
+    #If all problems have the same dimensionality there's no issue, but if dimensionality varies characteristic vector size will vary
+    #so the characterizer will skip the per dimension features if dimensionality is not fixed
+    characterizer = Characterizer(dimensionality=DIMENSIONALITY, perDimensionFeatures=FIXEDDIMENSIONALITY)
     
     if MODELTYPE == "Adaptive":
         generatorType = AdaptiveGenerator
-        model = AdaptiveGenerator(204, configurationDefinition, seed=rng.randint(0,4000000000), minInformedPercent=MININFORMEDPERCENT, maxInformedPercent=MAXINFORMEDPERCENT, informedPercentVariance=INFOMREDPERCENTVARIANCE)
+        model = AdaptiveGenerator(characterizer.featureSize(), configurationDefinition, seed=rng.randint(0,4000000000), minInformedPercent=MININFORMEDPERCENT, maxInformedPercent=MAXINFORMEDPERCENT, informedPercentVariance=INFOMREDPERCENTVARIANCE)
     elif MODELTYPE == "Random":
         generatorType = RandomGenerator 
         model = RandomGenerator(configurationDefinition, rng.randint(0,4000000000))
     else:
         raise Exception("Model type not recognized.")
-    
-    #TODO: figre out how Configure should be made aware of the problem dimensionality 
-    #also, what about configuring for problems of different dimensionality simutaneously?
-    #perhaps we should test on functions of a single size, and plan to use an auto-encoder/feature reduction in the future to normalize input sizes?
-    #a much better idea is probably to give the model multiple heads, one for each size
-    #so dimensionality becomes a required parameter of a problem, walk the suite to grab all dimensionalities, initialize a separate head for each one 
-    # Each head could be a layer or two, and during training will be updated appropriately for feature vectors of that size  
     
     #model = RandomGenerator(configurationDefinition, rng.randint(0,4000000000))
     
