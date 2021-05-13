@@ -33,6 +33,18 @@ class Run:
         self.configurations = [] 
 
         self.performedAt = int(time.time()*1000000)
+        self.performedOnIteration = None
+
+    #returns the quality of the best solution produced in this run 
+    def quality(self) -> float:
+        return self.configurations[-1].quality 
+
+        # for i in range(len(self.configurations)-1, -1, -1):
+        #     conf = self.configurations[i] 
+        #     if conf.rawResult is None:
+        #         continue
+        #     else:
+        #         return conf.rawResult["solutions"][-1]["quality"]
 
     #produces a unique identifier corresponding to the problem 
     def problem(self) -> int:

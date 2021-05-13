@@ -2,8 +2,8 @@ from random import Random
 
 import numpy as np
 from Configurator.Run import Run
-from Configurator.ConfigurationDB import ConfigurationDB
-from typing import Tuple
+from Configurator.ConfigurationDB import sqlite3ConfigurationDB,sqlite3Record,ConfigurationDB,RecordTemplate
+from typing import List, Tuple
 from Configurator.ConfigurationDefinition import Configuration, ConfigurationDefinition
 from Configurator.ProblemSuite import ProblemSuite
 
@@ -23,13 +23,13 @@ def getConfigDef() -> Tuple[dict,ConfigurationDefinition]:
 
     return confDefs,configurationDefinition
 
-def getPopulatedConfigDB(seed:int) -> ConfigurationDB:
+def getPopulatedConfigDB(seed:int) -> Tuple[List[Run],ConfigurationDB]:
     _,suite = getProblemSuite(seed)
     instances1 = suite.generateN(100, suite.problems[0]) 
     instances2 = suite.generateN(100, suite.problems[1]) 
 
     vals = {} 
-    for i in range(6):
+    for i in range(1,6):
         vals["mean{}".format(i)] = 0.0 
         vals["std{}".format(i)] = 1.0 
     vals["greedy"] = "True" 
@@ -68,11 +68,14 @@ def getPopulatedConfigDB(seed:int) -> ConfigurationDB:
 
             c.features = np.asarray([rng.random() for x in range(159)])
             c.rawResult = result
+            c.quality = result["solutions"][-1]["quality"]
             run.configurations.append(c) 
         
         runs.append(run)
         
-    confDB = ConfigurationDB()
+    confDB = sqlite3ConfigurationDB(initialize=True,seed=12345)
+    
+
     for run in runs:
         confDB.addRun(run) 
 

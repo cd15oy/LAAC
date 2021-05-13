@@ -29,7 +29,7 @@ import json
 #Problems
 #We need to explicitly define all of the problems which LAAC will be configuring your algorithm for. 
 #For each of those problems we need a name, the flag to pass to the algorithm, and instance definitions 
-problems =  {"problems":
+problems =  {   "problems":
                 [                           #here we just need a list of problems, under the key "problems"
                     {   
                         "name":"f1",
@@ -50,7 +50,27 @@ problems =  {"problems":
                             "-pSeed $RANDOM"                   
                         ]
                     }
-                ]   
+                ],
+                "validation": #A list of problems to use for validation, these problems will not be used to train the internal model
+                # This could be the same problems as above, with different instances, or more interestingly a set of new but related problems 
+                # Since this is just an example file, we repeat the definitions above 
+                [
+                    {   
+                        "name":"f1",
+                        "flag":"-p f1",
+                        "instances": 
+                        [
+                            "-pSeed $RANDOM"     
+                        ]
+                    },
+                    {   "name":"f2",
+                        "flag":"-p f2",
+                        "instances": 
+                        [                
+                            "-pSeed $RANDOM"                   
+                        ]
+                    }
+                ]
             }
 
 #Configurations 
@@ -64,9 +84,9 @@ parameters =    {   #Each parameter to tune needs a definition in the paremters 
                             "name":"iterations",
                             "type":"integer",
                             "flag":"-i",
-                            "default":125,
-                            "lower":50,
-                            "upper":200
+                            "default":250,
+                            "lower":150,
+                            "upper":350
                         },
                         {
                             "name":"samples",
@@ -430,16 +450,29 @@ scenario =  {
                                 "problemDefs":"optFiles/problems.json",         #The location of the problem definition file 
                                 "parameterDefs":"optFiles/parameters.json",    #The location of the the parameter definitions 
                                 "runFELimit": 5000,                            #The maximum number of function evaluations which can be consumed by a run of your algorithm
-                                "totalFELimit": 100000,                        #The maximum number of FEs which can be consumed by LAAC 
+                                "totalFELimit": 1000000,                        #The maximum number of FEs which can be consumed by LAAC 
                                 "minRunsPerConfig":1,                           #The minimum number of runs to consider when evaluating a configuration 
                                 "maxRunsPerConfig":30,                          #The maximum number of runs to consider when evaluating a configuration 
-                                "targetAlgorithm":"python3 target-algorithm.py",#The call to run the target algorithm 
+                                "targetAlgorithm":"python3 target-algorithm.py", #The call to run the target algorithm 
                                 "staticArgs":"-d 20",                            #Arguments to be provided to every algorithm call, constant settings  
                                 "strictConstraints": False,                     #Influences how strictly constraint expressions in the parameter definition are enforced
-                                "configsPerIteration":8,                        #The initial number of configurations to test per iteration of LAAC
-                                "threads":8,                                    #Threads to use for algorithm evaluations
-                                "fixedDimensionality":True,                     #True all problems in the problem suite have the same dimensionality, false otherwise
-                                "dimensionality":20,                            #Ignored if dimensionality is not fixed, otherwise the problem dimensionality
+                                "configsPerIteration":32,                       #The initial number of configurations to test per iteration of LAAC
+                                "threads":4,                                    #Threads to use for algorithm evaluations
+                                "dbfile":"resultsdb",                           #The file where tested configurations and their quality will be stored. 
+                                "workInMemory":True,                            #If true results will be kept in memory at runtime, and written to disk at the end of the run
+                                "modelHistory":"modelHistory.json",             #A summary of the underlying model's performance
+                                "modelStoragePath":"models/",                   #A path at which to store model checkpoints
+                                "resultsStoragePath":"results/",                #Output from LAAC will be written under this path, existing content will be deleted 
+                                "validate":False,                                #Whether or not to perform validation 
+                                "countValidationFEs":False,                     #Validation FEs are not counted towards the total since their result is independent of the training process 
+                                "randomlyAssignToValidation":0.0,              #Randomly assign a percentage of the problems from the "problems" list to the validation list (removing them from the problems list). Should be a number in [0,1]
+                                "configsPerValidation":32,                  #The number of configurations to run during validation
+                                "modelType":"Adaptive",                     #The type of underlying model used for predicting parametes. <Adaptive or Random>
+                                "minInformedPercent":0.05,                  #Three parameters used by the adaptive model influencing how often it's predictions are made randomly
+                                "maxInformedPercent":0.95,                  
+                                "informedPercentVariance":0.1,
+                                "fixedDimensionality":True,                #Indicates if all problems in the suite will have the same dimensionality 
+                                "dimensionality":20,                        #Dimensionality of the problems, ignored if fixed dimensionality is False
                                 "seed":12345                                    #Seed for reproducibility
                             }
             }

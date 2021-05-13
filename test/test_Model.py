@@ -16,6 +16,7 @@ You should have received a copy of the GNU Lesser General Public License
 along with this program.  If not, see <https://www.gnu.org/licenses/>.
 """
 
+from copy import deepcopy
 from Configurator.Model import LatinHyperCube, Model, NeuralNetwork
 from random import Random
 
@@ -33,19 +34,19 @@ class TestModel(unittest.TestCase):
     def setUp(self):
         self.seed = 12345 
         self.rng = Random(self.seed)
-        np.random.seed(self.seed)
 
         _, self.configDef = getConfigDef()
 
         _, self.configDB = getPopulatedConfigDB(self.seed)
 
-        for prob in self.configDB.records:
-            for k in self.configDB.records[prob]:
-                rcrd = self.configDB.records[prob][k]
+        problems = [x for x in self.configDB.problemGenerator()]
+
+        for problem in problems:
+            for rcrd in problem:
                 rcrd.desirable(True)
 
     def _isRepeatable(self, inputSize:int, model1:Model, model2:Model):
-        features = np.random.random((1,inputSize))
+        features = np.asarray([self.rng.random() for x in range(inputSize)])
 
         conf1 = model1.generate(features) 
         conf2 = model2.generate(features)
@@ -69,6 +70,10 @@ class TestModel(unittest.TestCase):
 
         self._isRepeatable(100, model1, model2)
 
+        model3 = LatinHyperCube(10, self.configDef, self.seed+1)
+        model3.load(deepcopy(model1.state())) 
+
+        self._isRepeatable(100, model1, model3) 
         #TODO: test uniformity of distribution?
 
 
@@ -77,4 +82,9 @@ class TestModel(unittest.TestCase):
         model2 = NeuralNetwork(159, self.configDef, self.seed, True)
 
         self._isRepeatable(159, model1, model2)
+
+        model3 = NeuralNetwork(159, self.configDef, self.seed, True) 
+        model3.load(deepcopy(model1.state()))
+        
+        self._isRepeatable(159, model1, model3)
   

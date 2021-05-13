@@ -16,8 +16,6 @@ You should have received a copy of the GNU Lesser General Public License
 along with this program.  If not, see <https://www.gnu.org/licenses/>.
 """
 
-from Configurator.ConfigurationDB import Record
-from random import Random
 from test.initializer import getPopulatedConfigDB
 import unittest
 
@@ -25,23 +23,28 @@ import unittest
 Sanity checks for ConfigurationDB
 """
 #TODO: These tests will need to be updated after we update/finalize the configuration DB
-class TestConfiguratioDB(unittest.TestCase):
+class TestConfigurationDB(unittest.TestCase):
 
     def setUp(self):
         self.seed = 12345
-        self.runs,self.db = getPopulatedConfigDB(self.seed)
+        
 
     def tearDown(self):
         pass
 
+    #TODO: update for the new config DB implementation
     def testDB(self):
-        self.assertTrue(len(self.db.records) == 2, "Should be two problems in DB")
+        runs,db = getPopulatedConfigDB(self.seed)
 
-        for prob in self.db.records:
-            self.assertTrue(len(self.db.records[prob]) == 1, "Should be one record for each problem.")
+        probGenerators = [x for x in db.problemGenerator()] 
 
-            for id in self.db.records[prob]:
-                rcrd:Record = self.db.records[prob][id]
+        self.assertTrue(len(probGenerators) == 2, "Should be two problems in DB")
+
+        for prob in probGenerators:
+            records = [x for x in prob]
+            self.assertEqual(len(records), 1, "Should be one record for each problem.")
+
+            for rcrd in records:
 
                 self.assertTrue(len(rcrd.getRuns()) == 100, "Should be 100 runs in this record.")
                 

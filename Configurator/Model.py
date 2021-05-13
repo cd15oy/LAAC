@@ -16,43 +16,33 @@ You should have received a copy of the GNU Lesser General Public License
 along with this program.  If not, see <https://www.gnu.org/licenses/>.
 """
 
-from typing import List
+from copy import deepcopy
+from io import BytesIO
+import pickle
+from typing import Dict, List
 from Configurator.ConfigurationDefinition import ConfigurationDefinition
 from Configurator.ConfigurationDB import ConfigurationDB
-import threading
 import numpy as np
 from numpy import ndarray
-import torch 
 from math import isfinite
 from random import Random,seed as setPythonSeed
-import os
+import torch
 
-
-#TODO: remove model level locking, its moved up to  the config generator
 """ 
 This class defines a method for selecting the "next" configuration to be used with the algorithm
 """
 class Model:
 
-    #One model may be shared among multiple workers which are waiting on results from the target algorithm 
-    #Since models may be statefull, we need to ensure that only one worker is able to use the model at a time, thus Locking is required
-    def __init__(self):
-        self.lock = threading.Lock()
-
     #This method should return a dictionary where the keys are the parameter names and the values are the parameter values
     def generate(self, features:ndarray) -> dict:
-        self.lock.acquire() 
         config = self._generate(features) 
-        self.lock.release() 
         return config
     
     #LAAC will provide the configurationDb to the model
     #the ConfigurationDB will contain information about the tested configurations, the runs performed with them, and which configurations respresent desirable output 
     #update is responsible for selecting useful information from the DB, and updating the model to produce better predictions
     def update(self, configs:ConfigurationDB) -> None:
-        self.lock.acquire()
         self._update(configs) 
-        self.lock.release()
 
     #Model implementations must implement this method to be used by LAAC
     def _generate(self, features:ndarray) -> dict:
@@ -60,6 +50,14 @@ class Model:
 
     #Model implementations must provide a method for updating themselves from a ConfigurationDB 
     def _update(self, configs:ConfigurationDB) -> None:
+        raise NotImplementedError
+
+    #returns a dict defining the internal state of the model 
+    def state(self) -> Dict:
+        raise NotImplementedError
+
+    #loads the provided state into the model.
+    def load(self, state:Dict) -> None:
         raise NotImplementedError
 
 #purely random configuration sampling
@@ -128,6 +126,23 @@ class LatinHyperCube(Model):
 
         return vals 
 
+    #returns a dict defining the internal state of the model 
+    def state(self) -> Dict:
+        ret = dict() 
+        ret["configs"] = self.configs 
+        ret["confDef"] = pickle.dumps(self.configDef)
+        ret["bufferSize"] = self.bufferSize 
+        ret["rng"] = pickle.dumps(self.rng)
+        return ret
+
+    #loads the provided state into the model.
+    def load(self, state:Dict) -> None:
+        state = deepcopy(state) 
+        self.configs = state["configs"]
+        self.configDef = pickle.loads(state["confDef"])
+        self.bufferSize = state["bufferSize"] 
+        self.rng = pickle.loads(state["rng"])
+
 class _NeuralNetworkModel(torch.nn.Module):
     def __init__(self, inputSize:int, configDef:ConfigurationDefinition, cpu:bool=True):
         super(_NeuralNetworkModel, self).__init__()
@@ -136,16 +151,16 @@ class _NeuralNetworkModel(torch.nn.Module):
 
         self.input = torch.nn.Sequential(
                             torch.nn.Linear(inputSize, 500),
-                            torch.nn.Hardtanh(-1,1)
+                            torch.nn.ELU()
                         )
         
         self.features = torch.nn.Sequential(
-                            torch.nn.Linear(500, 300),
-                            torch.nn.Hardtanh(-1,1),
-                            torch.nn.Linear(300, 300),
-                            torch.nn.Hardtanh(-1,1),
-                            torch.nn.Linear(300, 500),
-                            torch.nn.Hardtanh(-1,1)
+                            torch.nn.Linear(500, 250),
+                            torch.nn.ELU(),
+                            torch.nn.Linear(250, 125),
+                            torch.nn.ELU(),
+                            torch.nn.Linear(125, 50),
+                            torch.nn.ELU()
                         )
 
         #construct regressors (and possibly classifiers) for each parameter to predict
@@ -154,14 +169,14 @@ class _NeuralNetworkModel(torch.nn.Module):
         for param in configDef.parameters:
             if param.type == "real" or param.type == "integer":
                 head = torch.nn.Sequential(
-                            torch.nn.Linear(500, 1),
-                            torch.nn.Hardtanh(-1,1)
+                            torch.nn.Linear(50, 1),
+                            torch.nn.Tanh()
                         )
                 criteria = torch.nn.MSELoss()
                 self.output.append((param, head, criteria))
             if param.type == "categorical":
                 head = torch.nn.Sequential(
-                            torch.nn.Linear(500, len(param.options))
+                            torch.nn.Linear(50, len(param.options))
                 )
                 criteria = torch.nn.CrossEntropyLoss() 
                 self.output.append((param, head, criteria))
@@ -177,18 +192,20 @@ class _NeuralNetworkModel(torch.nn.Module):
 
 
 class NeuralNetwork(Model):
+    
     def __init__(self, inputSize:int, configDef:ConfigurationDefinition, seed:int, cpu:bool=True):
         super(NeuralNetwork, self).__init__() 
+
+        self.origSeed = seed 
         self.rng = Random(seed) 
-        #TODO: enable GPU accelerated training
-        #self.device = torch.device("cuda:0" if torch.cuda.is_available() and not cpu else "cpu")
+        torch.cuda.manual_seed_all(self.rng.randint(0,4000000000))
         #A bunch of stuff to make sure pytorch is reproducible 
         #Commenting this out may improve performance in some cases 
         torch.set_deterministic(True)
-        os.environ['PYTHONHASHSEED'] = str(seed)
+        #os.environ['PYTHONHASHSEED'] = str(seed)
         setPythonSeed(seed)
         torch.manual_seed(self.rng.randint(0,4000000000))
-        torch.cuda.manual_seed_all(self.rng.randint(0,4000000000))
+        
         torch.backends.cudnn.deterministic = True
         torch.backends.cudnn.benchmark = False
         np.random.seed(self.rng.randint(0,4000000000))
@@ -199,92 +216,116 @@ class NeuralNetwork(Model):
 
         #TODO: make training paramters, network arch, etc configurable
         #num examples drawn from dataset
-        self.batchSize = 32
+        self.batchSize = 128
         self.lr = 0.001
-        self.momentum = 0.001
-        self.epochs = 3
+        self.momentum = 0.1
+        self.epochs = 20
         self.optimizer =torch.optim.RMSprop(self.predictor.parameters(), lr=self.lr, momentum=self.momentum)
+        # self.batchSize = 32
+        # self.lr = 0.00000001
+        # self.momentum = 0.000001
+        # self.epochs = 20
+        # self.optimizer =torch.optim.SGD(self.predictor.parameters(), lr=self.lr, momentum=self.momentum)
+        self.history = [] 
          
 
-    #train the model
-    #TODO: something more efficient
-    def _update(self, configs:ConfigurationDB) -> None:
+    def _getExamples(self,configs:ConfigurationDB, k):
         examples = []
-        for prob in configs.records:
-            for rcrd in configs.records[prob]:
-                record = configs.records[prob][rcrd]
-                if record.desirable():
-                    for run in record.getRuns():
-                        examples.append(run) 
-        
-        #sample desirable runs #TODO: use random.sample, and resample on each epoch , alternatively we can stick with choice, and replace epochs with k, 
-        #it would be more fine grained control over how much training is done
-        examples = self.rng.choices(examples, k=128)
+        for run in configs.getDesirables(k):
+            examples.append(run) 
         
         #convert the runs into training examples 
         featureArray = []
-        configs = [] 
+        confs = [] 
         for run in examples:
             for i,c in enumerate(run.configurations[1:]):
                 featureArray.append(run.configurations[i].features)
-                configs.append(c)
+                confs.append(c)
     
-        
         featureArray = self.__cleanInput(featureArray)
-        
-        examples = [x for x in zip(featureArray,configs)]
-  
+
+        examples = [x for x in zip(featureArray,confs)]
+
+        return examples
+
+    #train the model
+    def _update(self, configs:ConfigurationDB) -> None:
+        #TODO???
+        torch.manual_seed(self.rng.randint(0,4000000000))
+        np.random.seed(self.rng.randint(0,4000000000))
+        setPythonSeed(self.rng.randint(0,4000000000))
+        #torch.cuda.manual_seed_all(self.rng.randint(0,4000000000))
+        #######
+    
         self.predictor.train()
 
         optimizer = self.optimizer 
         optimizer.zero_grad()
         loss = None
 
+        lossList = [] 
+
+        MAXEXAMPLES = 128
+
         for e in range(self.epochs):
-            self.rng.shuffle(examples)
-            for i, data in enumerate(examples):
-                #data = dataset.__get__(i) #enumerate(dataset):
-                pattern,target = data  
+
+            
+            examples = self._getExamples(configs, MAXEXAMPLES)
+
+            for i in range(0, len(examples), self.batchSize):
+                data = examples[i:i+self.batchSize]
+
+                pattern = np.asarray([x[0] for x in data])
+                targets = [x[1] for x in data]
 
                 #calculated and propagate loss for all outputs
-                pattern = torch.from_numpy(pattern).unsqueeze(0) 
+                pattern = torch.from_numpy(pattern)
 
-                output = self.predictor(pattern.float())
-                for out in output:
-                    targetVal = target.values[out[0].name].value 
+                outputs = self.predictor(pattern.float())
 
-                    if out[0].type == "real" or out[0].type == "integer":
-                        targetVal = [self.__normalizeNumeric(targetVal, out[0])]
-                    elif out[0].type == "categorical":
-                        targetVal = self.__categoryToPred(targetVal, out[0])
+                for out in outputs:
+                    targetVals = [] 
 
-                    targetVal = torch.tensor(targetVal).unsqueeze(0)
+                    for config in targets:
+                        targetVal = config.values[out[0].name].value 
+
+                        if out[0].type == "real" or out[0].type == "integer":
+                            targetVal = [self.__normalizeNumeric(targetVal, out[0])]
+                        elif out[0].type == "categorical":
+                            targetVal = self.__categoryToPred(targetVal, out[0])
+
+                        targetVals.append(targetVal) 
+
+                    targetVals = torch.tensor(targetVals)
 
                     criteria = out[2]
                     if loss is None:
-                        loss = criteria(out[1], targetVal) 
+                        loss = criteria(out[1], targetVals) 
                     else:
-                        loss += criteria(out[1], targetVal)
+                        loss += criteria(out[1], targetVals)
                 
                 
 
-                if (1+i) % self.batchSize == 0:
-                    loss = loss/self.batchSize
-                    loss.backward()
-                    print(loss.item())
-                    optimizer.step()
-                    optimizer.zero_grad()
-                    loss = None
 
-        #optimizer.step()
-        # optimizer.zero_grad()
-
+                loss = loss/len(data)
+                loss.backward()
+                optimizer.step()
+                optimizer.zero_grad()
+                lossList.append(loss.item()) 
+                loss = None
 
         self.predictor.eval()
+        self.history.append(lossList)
         
 
     #generate a config from the provided features
     def _generate(self, features:ndarray) -> dict:
+         #TODO???
+        torch.manual_seed(self.rng.randint(0,4000000000))
+        np.random.seed(self.rng.randint(0,4000000000))
+        setPythonSeed(self.rng.randint(0,4000000000))
+        #torch.cuda.manual_seed_all(self.rng.randint(0,4000000000))
+        #####
         dta = self.__cleanInput(np.asarray([features],dtype=np.float32))
         dta = torch.from_numpy(dta)
         #dta.to(self.device) 
@@ -305,21 +346,56 @@ class NeuralNetwork(Model):
 
         return ret
 
+    #returns a dict defining the internal state of the model 
+    def state(self) -> Dict:
+        
+        state = dict() 
+        state["rng"] = pickle.dumps(self.rng)
+        #state["nnParams"] = pickle.dumps(self.predictor.state_dict()) 
+        state["batchSize"] = self.batchSize 
+        state["lr"] = self.lr
+        state["momentum"] = self.momentum 
+        state["epochs"] = self.epochs 
+        #state["optimizerParams"] = pickle.dumps(self.optimizer.state_dict()) 
+        state["origSeed"] = self.origSeed 
+        #state["predictor"] = pickle.dumps(self.predictor) 
+        #state["optimizer"] = pickle.dumps(self.optimizer)
+        nnStateBytes = BytesIO()
+        torch.save({'predictor':self.predictor.state_dict(), 'optimizer':self.optimizer.state_dict()}, nnStateBytes, pickle_module=pickle)
+        nnStateBytes.seek(0)
+        state["torchParams"] = pickle.dumps(nnStateBytes) 
+        
+        return state 
+
+    #loads the provided state into the model.
+    def load(self, state:Dict) -> None:
+        state = deepcopy(state)
+        self.rng = pickle.loads(state["rng"])
+        self.origSeed = state["origSeed"] 
+        self.batchSize = state["batchSize"]
+        self.lr = state["lr"] 
+        self.momentum = state["momentum"]
+        self.epochs = state["epochs"] 
+        
+        nnState = torch.load(pickle.loads(state["torchParams"])) 
+        self.predictor.load_state_dict(nnState["predictor"]) 
+        self.optimizer.load_state_dict(nnState["optimizer"])
+        self.predictor.eval()
+
     #TODO: update this to better handle nans, infs, large numbers, and potential roundoff errors
     def __cleanInput(self,x):
 
-        featureArray = np.nan_to_num(x, nan=0, posinf=3.4028237e16, neginf=-3.4028237e16)
+        #featureArray = np.nan_to_num(x, nan=0, posinf=3.4028237e16, neginf=-3.4028237e16)
+        featureArray = np.nan_to_num(x, nan=0, posinf=0, neginf=0)
 
         featureArray = np.asarray(featureArray, np.float32)
     
         avg = np.mean(featureArray, axis=0)
         std = np.std(featureArray, axis=0) 
         std[std == 0] = 0.000001
-        avg = np.nan_to_num(avg)
+        avg = np.nan_to_num(avg, nan=0, posinf=0, neginf=0)
         featureArray = ((featureArray - avg)/std)
-        featureArray = np.nan_to_num(featureArray)
-
-        
+        featureArray = np.nan_to_num(featureArray, nan=0, posinf=0, neginf=0)
 
         return featureArray
 

@@ -16,25 +16,24 @@ You should have received a copy of the GNU Lesser General Public License
 along with this program.  If not, see <https://www.gnu.org/licenses/>.
 """
 
-#TODO: The next 3 major steps:
-#### Update the config DB to avoid the need to rewalk the entire DB over and over and over again
-####    also to drop unneeded inforation, ex the solutions/states and save space
-#### Update the config DB to use sqlite3, and store results on disk  
-#### Test the effects of writing the model to BytesIO and re-reading it separately in each run process, should remove a major bottle neck 
-#### Add logging, which writes run stats to the ConfigDB sqlite3 file
-####    or possible a more portable JSON
-
-#see the copy of Models.py on frank for some different tested NN params
+#Plans:
+#TODO: collect runs to compare random vs adaptive: validate the adaptive version at each iteration, test with 100% training, 66% trainig, and 33% training
+#TODO: repeat the random vs adaptive test, ie rerun the adaptive version, with the per dimension features removed, making the network independent of dimensionality 
+#compare and see if the per dimension features are required for performance 
+#hopefully we can remove the per dimension features without significantly altering performance, otherwise we can leave them in, and leave variable dimensionality as future work/test any other options available 
+#TODO: test effects of varying the cut-off value for the evaluator 
+#TODO: determine how consistently a trained model will perform for specific initial configs
 
 """
 The main file. This file can be run to configure your algorithm after valid LAAC settings files have been defined. See parameters.py 
 """
+import multiprocessing
 from Configurator.Evaluator import SimpleEvaluator
-from Configurator.ConfigurationDB import ConfigurationDB
+from Configurator.ConfigurationDB import sqlite3ConfigurationDB
 from Configurator.Run import Run
 from Configurator.Runner import RandomInstanceRunner
 from Configurator.Characterizer import Characterizer
-from Configurator.ConfigurationGenerator import AdaptiveGenerator, NNBackedGenerator, RandomGenerator
+from Configurator.ConfigurationGenerator import AdaptiveGenerator, RandomGenerator
 from Configurator.ProblemSuite import ProblemSuite
 from Configurator.ConfigurationDefinition import ConfigurationDefinition
 from Configurator.Algorithm import Algorithm
@@ -42,8 +41,15 @@ from Configurator.TerminationCondition import FELimit
 import json
 import argparse
 from random import Random, randint
-from typing import List
-from multiprocessing.managers import BaseManager 
+from typing import List 
+from pathlib import Path
+import pickle
+from os import path
+from shutil import rmtree
+from time import time
+from sys import stderr
+
+
 
 #Counts the total FEs consumed by a list of runs 
 def countFEs(runs:List[Run]) -> int:
@@ -54,14 +60,17 @@ def countFEs(runs:List[Run]) -> int:
 
     return total 
 
+def main():
+    #needed for torch, since torch is stateful
+    multiprocessing.set_start_method("spawn")
 
-if __name__ == "__main__":
     #READ THE SCENARIO
 
     #Notice that very few command line arguments are supported. The primary means of configuration SHOULD be through scenario, problem, and parameter JSONs. Furthermore, LAAC will not fill in default values for fields missing from the JSONs, all fields must be filled in. This is by choice, it means that in order to run LAAC you must explicitly document all settings/values you use, so as long as you save your JSONs, you know exactly what tests/experiments you've run. 
     parser = argparse.ArgumentParser(description='A tool for adaptive landscape aware online algorithm configuration.')
     parser.add_argument("-seed", action="store", nargs='?', default=None,  help="The seed for random number generation.", dest="seed") 
     parser.add_argument("-scenario", action="store", nargs=1, default=None , help="The scenario file to read from.", dest="scenario")
+    parser.add_argument("-outDir", action="store", nargs='?', default=None, help="A directory to write results to.", dest="outDir")
     
     args = parser.parse_args()
 
@@ -89,48 +98,96 @@ if __name__ == "__main__":
     else:
         seed = scenario["seed"]
 
-    class CustomManager(BaseManager):
-        pass 
+    if args.outDir is not None:
+        RESULTSPATH = args.outDir 
+    else:
+        RESULTSPATH = scenario["resultsStoragePath"]
+    
+    DBFILE = scenario["dbfile"]
+    DBFILE = f"{RESULTSPATH}/{DBFILE}"
+    WORKINMEMORY = scenario["workInMemory"]
+    MODELHISTORYFILE = scenario["modelHistory"]
+    MODELHISTORYFILE = f"{RESULTSPATH}/{MODELHISTORYFILE}"
+    MODELSTORAGEPATH = scenario["modelStoragePath"]
+    MODELSTORAGEPATH = f"{RESULTSPATH}/{MODELSTORAGEPATH}/"
+    ALGORITHMSTORAGEPATH = f"{RESULTSPATH}/algorithm/"
+    VALIDATE = scenario["validate"]
+    COUNTVALIDATIONFES = scenario["countValidationFEs"]
+    MODELTYPE = scenario["modelType"] 
+    MININFORMEDPERCENT = scenario["minInformedPercent"]
+    MAXINFORMEDPERCENT = scenario["maxInformedPercent"]
+    INFOMREDPERCENTVARIANCE = scenario["informedPercentVariance"]
+    RANDOMLYASSIGNTOVALIDATION = scenario["randomlyAssignToValidation"]
+    VALIDATIONCONFIGS = scenario["configsPerValidation"]
+    FIXEDDIMENSIONALITY = scenario["fixedDimensionality"]
+    DIMENSIONALITY = scenario["dimensionality"]
+    
 
-    # CustomManager.register("Algorithm", Algorithm, exposed=["run"])
-    # CustomManager.register("FELimit", FELimit, exposed=["terminate"])
-    # CustomManager.register("ConfigurationDefinition", ConfigurationDefinition, exposed=["validate"])
-    # CustomManager.register("ProblemSuite", ProblemSuite, exposed=["generateN","sampleN"])
-    # CustomManager.register("Characterizer", Characterizer, exposed=["characterize"])
-    CustomManager.register("NNBackedGenerator", NNBackedGenerator, exposed=["update","generate"])
-    CustomManager.register("ConfigGenerator", AdaptiveGenerator, exposed=["generate","update"])
-    # CustomManager.register("ConfigurationDB", ConfigurationDB, exposed=["addRun","getReRuns"])
-    CustomManager.register("Array", list, exposed=["append", "pop"])
+    #If the results path exists, remove it and all contained files 
+    if path.exists(RESULTSPATH):
+        rmtree(RESULTSPATH)
+
+    #create the results path 
+    Path(RESULTSPATH).mkdir(parents=True, exist_ok=True)
+
+    #ensure the model storage location exists 
+    Path(MODELSTORAGEPATH).mkdir(parents=True, exist_ok=True)
+
+    #create a location for algorithm output 
+    Path(ALGORITHMSTORAGEPATH).mkdir(parents=True, exist_ok=True)
+
     rng = Random(seed)
 
-    manager = CustomManager()
-    manager.start() 
-
-
-
-    alg = Algorithm(scenario["targetAlgorithm"], scenario["staticArgs"], scenario["strictConstraints"]==False) 
+    alg = Algorithm(scenario["targetAlgorithm"], scenario["staticArgs"], scenario["strictConstraints"]==False, ALGORITHMSTORAGEPATH) 
 
     termination = FELimit(scenario["runFELimit"])
     
     configurationDefinition = ConfigurationDefinition(parameters) 
 
+    #randomly assign from problems into the validation list   ###### HEREREERE
+    if RANDOMLYASSIGNTOVALIDATION is not None:
+        forTraining = []
+        forValidation = []
+        for i in range(len(problems["problems"])):
+            if rng.random() < RANDOMLYASSIGNTOVALIDATION:
+                forValidation.append(problems["problems"][i])
+            else:
+                forTraining.append(problems["problems"][i])
+
+        
+        problems["problems"] = forTraining 
+        problems["validation"] += forValidation
+        
     suite = ProblemSuite(problems, rng.randint(0,4000000000)) 
+    validationSuite = ProblemSuite({"problems":problems["validation"]}, rng.randint(0,4000000000))
 
-    FIXEDIMENSIONALITY = scenario["fixedDimensionality"]
-    DIMENSIONALITY = scenario["dimensionality"] 
-
-    #If the dimensionality is fixed, then per dimension features will be included in the characteristic vector, otherwise they will be left out
-    #If dimensionality is not fixed, and per dimension features are calculated, the size of the characteristic vector varies with dimensionality
-    #The issue is that the neural network expects inputs of a fixed size, so we just exclude the per dimension features when dimensionaity varies    
-    characterizer = Characterizer(perDimensionFeatures=FIXEDIMENSIONALITY, dimensionality=DIMENSIONALITY)
+    #The NN requires characteristic vectors of a fixed size, but some characteristics are calculated for each problem dimension 
+    #If all problems have the same dimensionality there's no issue, but if dimensionality varies characteristic vector size will vary
+    #so the characterizer will skip the per dimension features if dimensionality is not fixed
+    characterizer = Characterizer(dimensionality=DIMENSIONALITY, perDimensionFeatures=FIXEDDIMENSIONALITY)
     
-    #model = AdaptiveGenerator(159, configurationDefinition, seed=rng.randint(0,4000000000))
-    model = manager.ConfigGenerator(characterizer.featureSize(), configurationDefinition, rng.randint(0,4000000000), cpu=True)
+    if MODELTYPE == "Adaptive":
+        generatorType = AdaptiveGenerator
+        model = AdaptiveGenerator(characterizer.featureSize(), configurationDefinition, seed=rng.randint(0,4000000000), minInformedPercent=MININFORMEDPERCENT, maxInformedPercent=MAXINFORMEDPERCENT, informedPercentVariance=INFOMREDPERCENTVARIANCE)
+    elif MODELTYPE == "Random":
+        generatorType = RandomGenerator 
+        model = RandomGenerator(configurationDefinition, rng.randint(0,4000000000))
+    else:
+        raise Exception("Model type not recognized.")
+    
     #model = RandomGenerator(configurationDefinition, rng.randint(0,4000000000))
     
     runner = RandomInstanceRunner(suite, characterizer, termination, rng.randint(0,4000000000), alg, scenario["threads"]) 
+    validationRunner = RandomInstanceRunner(validationSuite, characterizer, termination, rng.randint(0,4000000000), alg, scenario["threads"])
 
-    configDB = ConfigurationDB() 
+    if WORKINMEMORY:
+        configDB = sqlite3ConfigurationDB(path=":memory:", initialize=True,seed=rng.randint(0,4000000000))
+        validationConfigDB = sqlite3ConfigurationDB(path=":memory:", initialize=True,seed=rng.randint(0,4000000000)) 
+    else:
+        configDB = sqlite3ConfigurationDB(path=f"{DBFILE}.training.sqlite3", initialize=True,seed=rng.randint(0,4000000000))
+        validationConfigDB = sqlite3ConfigurationDB(path=f"{DBFILE}.validation.sqlite3", initialize=True,seed=rng.randint(0,4000000000)) 
+
+    
 
     #TODO: eventually evaluator parameter need to be in the scenario file
     evaluator = SimpleEvaluator(0.25, False, scenario["maxRunsPerConfig"])
@@ -140,46 +197,86 @@ if __name__ == "__main__":
     configsPerIteration = scenario["configsPerIteration"] 
     minRunsPerConfig = scenario["minRunsPerConfig"]     
 
-    newRuns = runner.schedule(manager, configsPerIteration, minRunsPerConfig, model) 
+    newRuns = runner.schedule(configsPerIteration, minRunsPerConfig, model) 
     totalFEsConsumed = countFEs(newRuns)
+    for run in newRuns:
+        run.performedOnIteration = 0
+        configDB.addRun(run)
 
+    start = time()
 
-    best = dict() 
+    iteration = 1
     while totalFEsConsumed < FELIMIT:
         # for getting some stats about memory usage 
         # from guppy import hpy
         # h = hpy()
         # print(h.heap())
+
+        # import cProfile,pstats 
+
+        # profiler = cProfile.Profile() 
+
+        # profiler.enable() 
+
+        # profiler.disable() 
+        # stats = pstats.Stats(profiler).sort_stats('tottime')
+        # stats.strip_dirs()
+        # stats.print_stats()
         
         print("Progress: {}/{}".format(totalFEsConsumed,FELIMIT))
 
-        for run in newRuns:
-            configDB.addRun(run)
-
+        start = time()
         evaluator.evaluate(configDB)
+        tot = time() - start 
+        print(f"Evaluator: {tot}",file=stderr)
 
+        start = time()
         model.update(configDB)
+        tot = time() - start 
+        print(f"Update: {tot}",file=stderr)
 
+        start = time()
         #TODO: limit the total runs per iteration, and/or the total new configs vs the total reuns? adapt the limits according to criteria or iteration?
+        #do re-runs?
         toReRun = configDB.getReRuns() 
-        newRuns = runner.schedule(manager, configsPerIteration, minRunsPerConfig, model)
-        totalFEsConsumed += countFEs(newRuns)
+        newRuns = runner.schedule(configsPerIteration, minRunsPerConfig, model)
+        tot = time() - start 
+        print(f"Schedule: {tot}",file=stderr)
 
-        for prob in configDB.records:
-            for rcrd in configDB.records[prob]:
-                record = configDB.records[prob][rcrd]
-                if prob not in best:
-                    best[prob] = float('inf')
-                if record.desirable():
-                    quality = []
-                    for run in record.getRuns():
-                        quality.append(run.configurations[-1].rawResult["solutions"][-1]["quality"]) 
-                    from statistics import mean
-                    quality = mean(quality)
-                    if quality < best[prob]:
-                        best[prob] = quality 
-        print(best)
+        start = time()
+        totalFEsConsumed += countFEs(newRuns)
+        for run in newRuns:
+            run.performedOnIteration = iteration
+            configDB.addRun(run)
+        tot = time()-start 
+        print(f"Loading DB: {tot}",file=stderr)
+
+        summary = model.history()["history"][-1] 
+        print(summary)
+
+        #Write the models current state to disk
+        with open(f"{MODELSTORAGEPATH}/model_{iteration}.bin", 'wb') as outF:
+            outF.write(pickle.dumps(model.getState()))
+
+        if VALIDATE:
+            validationRuns = validationRunner.schedule(VALIDATIONCONFIGS, 1, model)
+            if COUNTVALIDATIONFES:
+                totalFEsConsumed += countFEs(validationRuns) 
+            for run in validationRuns:
+                run.performedOnIteration = iteration
+                validationConfigDB.addRun(run) 
+        
+        iteration += 1
 
     print("FE LIMIT PASSED")
-    #TODO output results in some format
 
+    if WORKINMEMORY: #We need to write the db from memory out to disk 
+        configDB.backup(f"{DBFILE}.training.sqlite3")
+        validationConfigDB.backup(f"{DBFILE}.validation.sqlite3")
+
+    with open(MODELHISTORYFILE, 'w') as outF:
+        outF.write(json.dumps(model.history(),indent=2))
+
+
+if __name__ == "__main__":
+    main()

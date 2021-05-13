@@ -41,6 +41,7 @@ class Problem:
     #get n instances chosen uniformly at random from existing instances (with replacement) 
     def sampleInstances(self, n:int)->List["Instance"]:
         #TODO: choices(list(set)) is inefficent, consider doing something less stupid
+        #well more specifically, converting the set to a list is inefficient
         return self.rng.choices(list(self.instances), k=n)
     
     #generate a concrete instance from the template 

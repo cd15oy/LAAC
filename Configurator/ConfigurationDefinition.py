@@ -62,7 +62,7 @@ class Constraint:
         self.operators = {ast.Add: op.add, ast.Sub: op.sub, ast.Mult: op.mul,
             ast.Div: op.truediv, ast.Lt: op.lt, ast.Gt:op.gt, ast.LtE:op.le, 
             ast.GtE:op.ge, ast.Eq:op.eq, ast.NotEq:op.ne, ast.And:op.and_, ast.Or:op.or_,
-            ast.USub:op.neg}
+            ast.USub:op.neg, ast.Pow:op.pow}
 
     def test(self, config:"Configuration") -> bool:
         expr = self.expression 
@@ -250,6 +250,7 @@ class Configuration:
         self.threadID = None
         self.characterizeSeed = None #This is the seed passed to characterize when generating the feature vector of this execution of the algorithm
         self.generationMethod = None #A string representing the method used to generate this configuration 
+        self.quality = None #The quality of the best solution produced by this configuration
 
     #Produces a string of command line arguments which can be passed on to Algorithm
     def toFlags(self) -> str:

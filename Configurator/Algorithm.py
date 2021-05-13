@@ -21,8 +21,7 @@ This class represents the target algorithm.
 """
 
 from json.decoder import JSONDecodeError
-import multiprocessing
-from Configurator.ConfigurationGenerator import ConfigurationGenerator
+from Configurator.ConfigurationGenerator import initModel
 from Configurator.ConfigurationDefinition import Configuration  
 from Configurator.Run import Run 
 from Configurator.Problem import Instance
@@ -31,28 +30,25 @@ from Configurator.Characterizer import Characterizer
 from subprocess import Popen, PIPE
 import json
 from random import Random
-import threading
-
-#TODO: tests for evaluateInvalid = False 
 
 class Algorithm:
 
-    def __init__(self, wrapperCall: str, staticArgs: str, evaluateInvalid:bool=False) -> None:
+    def __init__(self, wrapperCall: str, staticArgs: str, evaluateInvalid:bool=False, storagePath: str = "./") -> None:
         self.wrapperCall = wrapperCall 
         self.staticArgs = staticArgs
         self.evaluateInvalid = evaluateInvalid
+        self.storagePath = storagePath
     
   
     #note, termination condition needs to come from above, 
     #its possible that we will produce cases which stagnate for a while, then see improvement 
     #the specific conditions which indicate time to terminate will need to be adapted based on observation, and specific to different problems 
     #the initial condition will probably a total FE limit 
-    def run(self, instance: Instance, initialConfig: Configuration, characterizer: Characterizer, model: ConfigurationGenerator, terminationCondition: TerminationCondition, runSeed: int, threadID:int) -> Run:
+    def run(self, instance: Instance, initialConfig: Configuration, characterizer: Characterizer, modelState: dict, terminationCondition: TerminationCondition, runSeed: int, threadID:int, deleteSols:bool=True) -> Run:
 
-        #TODO: pass a binary/save of the model into algorithm and load/initialize a copy 
-        #That way each process running run can have its own model, and we can remove a bottle neck
-        
         rng = Random(runSeed)
+
+        model = initModel(modelState, rng.randint(0,4000000000))
 
         #A Run is simply a list of configurations 
         #Each individual configuration will contain the hyper parameters, and data collected about the algorithm
@@ -66,35 +62,15 @@ class Algorithm:
 
             #If the configuration is invalid, and LAAC should not evaluate invalid configs 
             if not conf.valid and not self.evaluateInvalid:
-                #TODO need to update evaluator (and probably others) to handle dummy records, making decisions when invalid configurations are involved 
-                print("I shouldn't see this")
-                #construct a dummy record with None features, solutions, etc 
-                features = None  #no features 
-                result =    {
-                                "solutions":None,
-                                    #[{"solution":None,"quality":float('inf')}],
-                                "state":None,
-                                    #[[{"solution":None,"quality":float('inf')},{"solution":None,"quality":float('inf')},{"solution":None,"quality":float('inf')},{"solution":None,"quality":float('inf')},{"solution":None,"quality":float('inf')}]],
-                                "evaluationsConsumed":0,
-                                "algorithmState":restore,
-                                "time":0
-                            }
-                conf.rawResult = result
-                conf.seed = 0
-                conf.threadID = threadID 
-
-                # #Store the finished configuration in the run 
-                theRun.configurations.append(conf)
-
-                # #Generate the next configuration
-                conf = model.generate(features)
+                #Generate a new configuration and attempt to continue, here we don't run invalid configs 
+                conf = model.generate(None)
 
             else:
                 seed = rng.randint(0,4000000000) #A seed for the execution of the target algorithm
                 characterizeSeed = rng.randint(0,4000000000) #A seed for the random sampler in characterize
 
                 #construct our command 
-                toRun = " ".join([self.wrapperCall, str(threadID), str(seed), self.staticArgs, instance.toFlags(), conf.toFlags(), restore])
+                toRun = " ".join([self.wrapperCall, str(threadID), str(seed), self.storagePath, self.staticArgs, instance.toFlags(), conf.toFlags(), restore])
 
                 io = Popen(toRun.strip().split(" "), stdout=PIPE, stderr=PIPE)
 
@@ -112,6 +88,7 @@ class Algorithm:
                 #print(output)
                 loc = output.find("RESULTS FOLLOW")
                 try:
+                    #TODO: json does not support nan, inf, etc, need to cope with those here 
                     result = json.loads(output[loc + 14:])
                 except JSONDecodeError:
                     print(output)
@@ -119,6 +96,14 @@ class Algorithm:
                 
                 # #Finish populating the Configuration with data
                 conf.features = characterizer.characterize(result, characterizeSeed)
+
+                conf.quality = result["solutions"][-1]["quality"]
+                
+                #remove the specifc solutions generated to save on space, we have all the seeds and the model, if needed, we can re-generate later
+                if deleteSols:
+                    del result["state"] 
+                    del result["solutions"]
+                
                 conf.rawResult = result
                 conf.seed = seed 
                 conf.threadID = threadID 
@@ -130,8 +115,8 @@ class Algorithm:
                 # #Generate the next configuration
                 conf = model.generate(conf.features)
 
-            #ensure we pick up where the algorithm left off
-            restore = result["algorithmState"]
+                #ensure we pick up where the algorithm left off
+                restore = result["algorithmState"]
 
         return theRun
 

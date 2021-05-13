@@ -266,6 +266,15 @@ Component Description:
 
 Parameters/Variables to consider and test 
 
+    definition of quality of a record 
+        CURRENTLY
+            we average the quality of the final solutions of each run of the config 
+            but many runs are performed with different versions of the model, ie sometimes training happens between runs 
+                so there is noise in the current method, early configs are at a disadvantage, since the undertrained model may have underperformed, bring down average 
+                later configs could be at an advantage since now dragged down by early model
+        NEED TO
+            come up with an alternative and test it against the current method 
+
     How should config generation/evaluation, network training, dataset updating, etc change as the run goes on 
 
     Effects of/Relationship between 
