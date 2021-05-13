@@ -116,14 +116,16 @@ if __name__ == "__main__":
 
     suite = ProblemSuite(problems, rng.randint(0,4000000000)) 
 
-    characterizer = Characterizer()
-    
+    FIXEDIMENSIONALITY = scenario["fixedDimensionality"]
+    DIMENSIONALITY = scenario["dimensionality"] 
 
+    #If the dimensionality is fixed, then per dimension features will be included in the characteristic vector, otherwise they will be left out
+    #If dimensionality is not fixed, and per dimension features are calculated, the size of the characteristic vector varies with dimensionality
+    #The issue is that the neural network expects inputs of a fixed size, so we just exclude the per dimension features when dimensionaity varies    
+    characterizer = Characterizer(perDimensionFeatures=FIXEDIMENSIONALITY, dimensionality=DIMENSIONALITY)
     
-    #TODO: figre out how Configure should be made aware of the problem dimensionality 
-    #also, what about configuring for problems of different dimensionality simutaneously?
     #model = AdaptiveGenerator(159, configurationDefinition, seed=rng.randint(0,4000000000))
-    model = manager.ConfigGenerator(159, configurationDefinition, rng.randint(0,4000000000), cpu=True)
+    model = manager.ConfigGenerator(characterizer.featureSize(), configurationDefinition, rng.randint(0,4000000000), cpu=True)
     #model = RandomGenerator(configurationDefinition, rng.randint(0,4000000000))
     
     runner = RandomInstanceRunner(suite, characterizer, termination, rng.randint(0,4000000000), alg, scenario["threads"]) 
