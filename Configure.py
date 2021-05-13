@@ -164,7 +164,7 @@ def main():
     #The NN requires characteristic vectors of a fixed size, but some characteristics are calculated for each problem dimension 
     #If all problems have the same dimensionality there's no issue, but if dimensionality varies characteristic vector size will vary
     #so the characterizer will skip the per dimension features if dimensionality is not fixed
-    characterizer = Characterizer(dimensionality=DIMENSIONALITY, perDimensionFeatures=FIXEDDIMENSIONALITY)
+    characterizer = Characterizer(dimensionality=DIMENSIONALITY, fixedDimensionality=FIXEDDIMENSIONALITY)
     
     if MODELTYPE == "Adaptive":
         generatorType = AdaptiveGenerator
