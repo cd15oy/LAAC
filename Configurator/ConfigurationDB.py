@@ -181,6 +181,8 @@ class sqlite3Record(RecordTemplate):
         return self._qualities
         
 
+#TODO: we need a names table, to map problem integers to problem flags. It's more convienient, and protects stored results against changes in python's hash function
+#also need to update record and db methods to keep the names table up to date
 """
 A configuration DB backed by sqlite 3.
 """
