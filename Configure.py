@@ -182,6 +182,7 @@ def main():
     
 
     #TODO: eventually evaluator parameter need to be in the scenario file
+    #maxRunsPerConfig is unused due to reRun==False below
     evaluator = SimpleEvaluator(0.25, False, scenario["maxRunsPerConfig"])
 
     #MAIN LOOP
