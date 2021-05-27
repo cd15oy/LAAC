@@ -471,6 +471,7 @@ scenario =  {
                                 "minInformedPercent":0.05,                  #Three parameters used by the adaptive model influencing how often it's predictions are made randomly
                                 "maxInformedPercent":0.95,                  
                                 "informedPercentVariance":0.1,
+                                "performanceCutOff":0.25,                   #The top performanceCutOff percent configs for a problem are considered when constructing the dataset for neural network training 
                                 "fixedDimensionality":True,                #Indicates if all problems in the suite will have the same dimensionality 
                                 "dimensionality":20,                        #Dimensionality of the problems, ignored if fixed dimensionality is False
                                 "seed":12345                                    #Seed for reproducibility

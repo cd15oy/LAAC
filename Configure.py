@@ -113,7 +113,7 @@ def main():
     VALIDATIONCONFIGS = scenario["configsPerValidation"]
     FIXEDDIMENSIONALITY = scenario["fixedDimensionality"]
     DIMENSIONALITY = scenario["dimensionality"]
-    
+    PERFORMANCECUTOFF = scenario["performanceCutOff"]
 
     #If the results path exists, remove it and all contained files 
     if path.exists(RESULTSPATH):
@@ -179,12 +179,9 @@ def main():
         configDB = sqlite3ConfigurationDB(path=f"{DBFILE}.training.sqlite3", initialize=True,seed=rng.randint(0,4000000000))
         validationConfigDB = sqlite3ConfigurationDB(path=f"{DBFILE}.validation.sqlite3", initialize=True,seed=rng.randint(0,4000000000)) 
 
-    
-
-    #TODO: eventually evaluator parameter need to be in the scenario file
     #maxRunsPerConfig is unused due to reRun==False below
     #Note, that Configure.py currently ignores any configs flagged as re-run in the DB
-    evaluator = SimpleEvaluator(0.25, False, scenario["maxRunsPerConfig"])
+    evaluator = SimpleEvaluator(PERFORMANCECUTOFF, False, scenario["maxRunsPerConfig"])
 
     #MAIN LOOP
     FELIMIT = scenario["totalFELimit"]
