@@ -147,10 +147,7 @@ class Characterizer:
                     [quality[-1]] + 
                     fit([x for x in quality]) 
             ]
-            if self.fixedDimensionality:
-                out[0] += [characteristics.gBestStag[x] for x in range(2*dims)]
-                out[0] += [characteristics.gBestyDist[x] for x in range(2*dims)]
-
+            
             if self.perDimensionFeatures:
                 out[0] += [characteristics.gBestStag[x] for x in range(2*dims)] 
                 out[0] += [characteristics.gBestyDist[x] for x in range(2*dims)]
