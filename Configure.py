@@ -16,14 +16,6 @@ You should have received a copy of the GNU Lesser General Public License
 along with this program.  If not, see <https://www.gnu.org/licenses/>.
 """
 
-#Plans:
-#TODO: collect runs to compare random vs adaptive: validate the adaptive version at each iteration, test with 100% training, 66% trainig, and 33% training
-#TODO: repeat the random vs adaptive test, ie rerun the adaptive version, with the per dimension features removed, making the network independent of dimensionality 
-#compare and see if the per dimension features are required for performance 
-#hopefully we can remove the per dimension features without significantly altering performance, otherwise we can leave them in, and leave variable dimensionality as future work/test any other options available 
-#TODO: test effects of varying the cut-off value for the evaluator 
-#TODO: determine how consistently a trained model will perform for specific initial configs
-
 """
 The main file. This file can be run to configure your algorithm after valid LAAC settings files have been defined. See parameters.py 
 """
@@ -236,9 +228,6 @@ def main():
         print(f"Update: {tot}",file=stderr)
 
         start = time()
-        #TODO: limit the total runs per iteration, and/or the total new configs vs the total reuns? adapt the limits according to criteria or iteration?
-        #do re-runs?
-        toReRun = configDB.getReRuns() 
         newRuns = runner.schedule(configsPerIteration, minRunsPerConfig, model)
         tot = time() - start 
         print(f"Schedule: {tot}",file=stderr)
