@@ -52,7 +52,6 @@ class Runner:
     def _generateInstances(self, confSampler:ConfigurationGenerator, configurations:List[Tuple[int,Configuration]]=None, runs:List[Tuple[int,Run]]=None) -> List[Tuple[Instance,Configuration]]:
         raise NotImplementedError
 
-    #TODO: reruns should be update to be a list of configurations 
     #Performs numInstances runs each for numNewConfigs new configuration sequences and performance an additional run on a new instance for any runs in configsToReRun 
     def schedule(self, numNewConfigs:int, numInstances:int, confSampler:ConfigurationGenerator, configsToReRun:List[Run] = None) -> List[Run]:
 
@@ -114,7 +113,7 @@ class RandomInstanceRunner(Runner):
         if runs is not None:
             for x in runs:
                 for y in range(x[0]):
-                    ret.append((self.problems.generateN(1, x[1].instance.problem)[0], x[1].configurations[0].duplicateParams()))
+                    ret.append((self.problems.generateN(1, self.problems.getProblemFromFlags(x[1].instance.problem))[0], x[1].configurations[0].duplicateParams()))
 
         return ret 
        

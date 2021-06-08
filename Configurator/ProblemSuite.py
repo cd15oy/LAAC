@@ -55,3 +55,9 @@ class ProblemSuite:
             return instances 
         else:
             return problem.sampleInstance(n)
+
+    #Retrieve a problem definition from its flags
+    def getProblemFromFlags(self, flags):
+        for p in self.problems:
+            if p.toFlags() == flags:
+                return p
