@@ -142,7 +142,11 @@ class Real(ParameterDefinition):
             raise ValueError("ValueError: default should be between lower and upper")
 
     def validate(self, value:float) -> bool:
-        return type(value) == float and value >= self.lower and value <= self.upper
+        try:
+            value = float(value)
+            return type(value) == float and value >= self.lower and value <= self.upper
+        except:
+            return False
 
 
 #for defining integer valued parameters
@@ -171,7 +175,11 @@ class Integer(ParameterDefinition):
             raise ValueError("ValueError: default should be between lower and upper")
 
     def validate(self, value:int) -> bool:
-        return type(value) == int and value >= self.lower and value <= self.upper
+        try:
+            value = int(value)
+            return type(value) == int and value >= self.lower and value <= self.upper
+        except:
+            return False
 
 #for defining categorical parameters
 class Categorical(ParameterDefinition):
