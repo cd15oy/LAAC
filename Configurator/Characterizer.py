@@ -27,6 +27,7 @@ from ctypes import POINTER, Structure, byref, c_long, cdll,c_double,c_int,c_long
 import numpy as np 
 from Configurator.RoC import fit 
 import sys 
+import os 
 
 #A generic error 
 class CharacterizerError(Exception):
@@ -48,11 +49,13 @@ class Characteristics(Structure):
         ("gBestyDist", POINTER(c_double))
     ]
 
-pth = sys.argv[0] 
+pth = os.path.abspath(sys.argv[0])
 loc = pth.rfind("/") 
 pth = pth[:loc]
 
 _characterizeLib = cdll.LoadLibrary(f'{pth}/FLA/Characterize.so')
+
+
 
 #If fixedDimensionality, then some features will be calculated on a per dimension basis 
 #dimensionality gives problem dimensionality, ignored if fixedDimensionality is false
