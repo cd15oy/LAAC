@@ -27,10 +27,12 @@ from Configurator.Characterizer import Characterizer
 from Configurator.ProblemSuite import ProblemSuite
 from copy import deepcopy
 from multiprocessing import Process, Manager
+import time 
 
 #A wrapper to capture the return value of alg
 def _algWrapper(alg:Callable, args:tuple, out:list):
-    out.append(alg(*args))
+    result = alg(*args)
+    out.append(result)
 
 """
 Runners are responsible for collecting runs of the target algorithm. This involves performing additional runs of existing configurations, as well as obtaining/running new configurations from the model. Runners are responsible for generatin the specific problem instances a configuration is evaluated on and ensuring the data we collect about a configuration provides a reliable description of the configuration.
@@ -72,7 +74,7 @@ class Runner:
 
         todo = [(inst, conf, self.characterizer, deepcopy(samplerState), self.terminationCondition, self.rng.randint(0,4000000000),i) for i,(inst,conf) in enumerate(todo)]
 
-        todo = [Process(target=_algWrapper, args=(self.algorithm.run, x, ret[i])) for i,x in enumerate(todo)]
+        todo = [Process(target=_algWrapper, args=(self.algorithm.run, x, ret[i]), daemon=True) for i,x in enumerate(todo)]
         running = []
 
         #My understanding is that a Pool uses a simple message queue to pass args into a new process, and retrieve results 
@@ -95,6 +97,8 @@ class Runner:
             
             running = stillRunning
 
+            time.sleep(0.1)
+
         return [x.pop(0) for x in ret] 
  
     def close(self) -> None:
@@ -102,7 +106,6 @@ class Runner:
 
 class RandomInstanceRunner(Runner):
     
-    #TODO: reruns should be update to be a list of configurations
     def _generateInstances(self, configurations:List[Tuple[int,Configuration]]=None, runs:List[Tuple[int,Run]]=None) -> List[Tuple[Instance,Configuration]]:
         ret = [] 
         if configurations is not None:
