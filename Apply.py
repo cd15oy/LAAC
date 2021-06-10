@@ -129,7 +129,7 @@ def main():
     if WORKINMEMORY:
         configDB = sqlite3ConfigurationDB(path=":memory:", initialize=True,seed=rng.randint(0,4000000000))
     else:
-        configDB = sqlite3ConfigurationDB(path=f"{DBFILE}.training.sqlite3", initialize=True,seed=rng.randint(0,4000000000))
+        configDB = sqlite3ConfigurationDB(path=f"{DBFILE}.sqlite3", initialize=True,seed=rng.randint(0,4000000000))
 
     #now we need to set up the list of configs/problem instances to run 
     todo = []
@@ -140,7 +140,7 @@ def main():
             conf = model.generate(None)
             for j in range(REPETITIONSPERRUN):
                 r = Run(suite.generateN(1, prob)[0])
-                r.configurations.append(conf)
+                r.configurations.append(conf.duplicateParams())
                 todo.append(r)
 
 
@@ -176,7 +176,7 @@ def main():
         configDB.addRun(run) 
 
     if WORKINMEMORY: #We need to write the db from memory out to disk 
-        configDB.backup(f"{DBFILE}.training.sqlite3")
+        configDB.backup(f"{DBFILE}.sqlite3")
    
 if __name__ == "__main__":
     main() 
