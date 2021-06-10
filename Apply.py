@@ -168,12 +168,22 @@ def main():
                     todo.append(r) 
 
     #do the work, yawn 
-    runs = runner.schedule(0, 0, model, todo)
 
-    #save the results 
-    for run in runs:
-        run.performedOnIteration = 0 
-        configDB.addRun(run) 
+    #making processes/process objects is expensive (wrt memory), so we schedule them in chunks
+    chunkSize = 512 #a nice big chunk of work, with managable memory requirements 
+
+    for i in range(0, len(todo), chunkSize):
+        end = i + chunkSize 
+        if end > len(todo):
+            end = len(todo) 
+        
+        todoNow = todo[i:end]
+        runs = runner.schedule(0, 0, model, todoNow)
+
+        #save the results 
+        for run in runs:
+            run.performedOnIteration = 0 
+            configDB.addRun(run) 
 
     if WORKINMEMORY: #We need to write the db from memory out to disk 
         configDB.backup(f"{DBFILE}.sqlite3")
