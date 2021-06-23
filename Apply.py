@@ -162,7 +162,6 @@ def main():
                     c = Configuration(configurationDefinition, confDict) 
 
                     #User requested initial configs are allowed to ignore specified constraints, all configs subsequently generated still must meet constraints 
-
                     c.valid = True 
                     c._ignoreConstraints = True 
                     
@@ -176,6 +175,11 @@ def main():
                 for i in range(REPETITIONSPERRUN):
                     r = Run(suite.generateN(1, prob)[0])
                     c = Configuration(configurationDefinition, confDict) 
+
+                    #User requested initial configs are allowed to ignore specified constraints, all configs subsequently generated still must meet constraints 
+                    c.valid = True 
+                    c._ignoreConstraints = True 
+                    
                     r.configurations.append(c) 
                     todo.append(r) 
 
