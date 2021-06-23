@@ -250,6 +250,9 @@ class Configuration:
         for constraint in configDef.constraints:
             if not constraint.test(self):
                 self.valid=False 
+
+        #A private flag which can specify that a specific instance of Configuration, and copies made through duplicateParams, can ignore constraints
+        self._ignoreConstraints = False 
                 
         #This will be filled in later once the configuration is actually run 
         self.features = None 
@@ -271,4 +274,9 @@ class Configuration:
     def duplicateParams(self) -> "Configuration":
         vals = {x:self.values[x].value for x in self.values}
         ret = Configuration(self.configurationDefinition, vals)
+
+        if self._ignoreConstraints:
+            ret._ignoreConstraints = True 
+            ret.valid = True 
+            
         return ret 

@@ -138,6 +138,12 @@ def main():
     for prob in suite.problems:
         for i in range(BLINDRUNSPERPROBLEM):
             conf = model.generate(None)
+
+            #.generate(None) has a chance of producing invalid configs, meaning repeated runs will each be forced to choose a new initial config, and will all almost certainly run with different initial configs, rendering repeated runs meaningless. 
+            #Here we grind out configs until a valid one is found
+            while not conf.valid:
+                conf = model.generate(None)
+
             for j in range(REPETITIONSPERRUN):
                 r = Run(suite.generateN(1, prob)[0])
                 r.configurations.append(conf.duplicateParams())
@@ -154,6 +160,12 @@ def main():
                 for i in range(REPETITIONSPERRUN):
                     r = Run(suite.generateN(1, prob)[0])
                     c = Configuration(configurationDefinition, confDict) 
+
+                    #User requested initial configs are allowed to ignore specified constraints, all configs subsequently generated still must meet constraints 
+
+                    c.valid = True 
+                    c._ignoreConstraints = True 
+                    
                     r.configurations.append(c) 
                     todo.append(r) 
 
