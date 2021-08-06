@@ -141,6 +141,7 @@ def main():
 
             #.generate(None) has a chance of producing invalid configs, meaning repeated runs will each be forced to choose a new initial config, and will all almost certainly run with different initial configs, rendering repeated runs meaningless. 
             #Here we grind out configs until a valid one is found
+            #TODO: Really, we should only do this is strictConstraints is true, otherwise we should be fine with invalid configs
             while not conf.valid:
                 conf = model.generate(None)
 

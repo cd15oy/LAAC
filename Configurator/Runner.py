@@ -57,6 +57,7 @@ class Runner:
     #Performs numInstances runs each for numNewConfigs new configuration sequences and performance an additional run on a new instance for any runs in configsToReRun 
     def schedule(self, numNewConfigs:int, numInstances:int, confSampler:ConfigurationGenerator, configsToReRun:List[Run] = None) -> List[Run]:
 
+        #TODO: we should check if strictConstraints is true, and if so grind out numNewConfigs valid initial configs. Otherwise validity is only checked at Algorithm. At algorithm invalid configs will be replaced with valid onces when constraints are strict, meaning attempts at repeating an invalid initial config will lead to multiple runs with different initial configs. Each new run started with the invalid config will grind out a new (possibly random) valid config. This change may effect other components, so we'll need to trace it out/test to double check.
         configs = [(numInstances, confSampler.generate()) for x in range(numNewConfigs)]
 
         #TODO: reruns should be update to be a list of configurations
